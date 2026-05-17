@@ -1,6 +1,15 @@
-# Todo App — Full-Stack Case Study
+# Nourish — Full-Stack Nutrition Tracker
 
-A full-stack Todo app built with React, Express, and Postgres. Demonstrates session-based authentication, session rehydration, auth-dependent data fetching, and conditional rendering — the same patterns students use in their full-stack projects.
+
+A full-stack nutrition tracking app built with React, Express, and Postgres. Demonstrates session-based authentication, session rehydration, auth-dependent data fetching, and conditional rendering — the same patterns used across full-stack projects.
+
+---
+
+## Mission Statement
+
+Nourish is for anyone who wants a simple, no-nonsense way to track their daily food intake and nutrition goals. Whether you're counting calories, monitoring protein, or just trying to build healthier habits, Nourish gives you a clean personal log to record meals and review your progress — no premium paywalls, no noise, just the data you need.
+
+---
 
 ## User Stories
 
@@ -10,11 +19,13 @@ A full-stack Todo app built with React, Express, and Postgres. Demonstrates sess
 - A user can log out
 - A returning user who has an active session is automatically logged in when they revisit the app
 
-**Todos**
-- A logged-in user can see all of their todos
-- A logged-in user can create a new todo by entering a title
-- A logged-in user can mark a todo as complete or incomplete
-- A logged-in user can delete a todo
+**Nutrition Logs**
+- A logged-in user can see all of their logged meals
+- A logged-in user can add a new meal entry with a name, calories, protein, carbs, and fat
+- A logged-in user can delete a meal entry
+- A logged-in user can see a daily summary of their total calories and macros
+
+---
 
 ## Schema
 
@@ -25,19 +36,25 @@ user_id       SERIAL PRIMARY KEY
 username      TEXT UNIQUE NOT NULL
 password_hash TEXT NOT NULL
 
-todos
+meals
 ─────────────────────────────
-todo_id     SERIAL PRIMARY KEY
-title       TEXT NOT NULL
-is_complete BOOLEAN DEFAULT FALSE
+meal_id     SERIAL PRIMARY KEY
+name        TEXT NOT NULL
+calories    INTEGER NOT NULL
+protein_g   INTEGER NOT NULL DEFAULT 0
+carbs_g     INTEGER NOT NULL DEFAULT 0
+fat_g       INTEGER NOT NULL DEFAULT 0
+logged_at   TIMESTAMPTZ DEFAULT NOW()
 user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
 ```
 
-A user has many todos. Deleting a user cascades to delete all of their todos.
+A user has many meals. Deleting a user cascades to delete all of their meal entries.
+
+---
 
 ## API Contract
 
-### Auth endpoints
+### Auth Endpoints
 
 | Method | Endpoint             | Request Body             | Response                          |
 | ------ | -------------------- | ------------------------ | --------------------------------- |
@@ -46,14 +63,15 @@ A user has many todos. Deleting a user cascades to delete all of their todos.
 | DELETE | `/api/auth/logout`   | —                        | `{ message }`                     |
 | GET    | `/api/auth/me`       | —                        | `{ user_id, username }` or `null` |
 
-### Todo endpoints (all require authentication)
+### Meal Endpoints (all require authentication)
 
-| Method | Endpoint              | Request Body      | Response                                     |
-| ------ | --------------------- | ----------------- | -------------------------------------------- |
-| GET    | `/api/todos`          | —                 | `[{ todo_id, title, is_complete, user_id }]` |
-| POST   | `/api/todos`          | `{ title }`       | `{ todo_id, title, is_complete, user_id }`   |
-| PATCH  | `/api/todos/:todo_id` | `{ is_complete }` | `{ todo_id, title, is_complete, user_id }`   |
-| DELETE | `/api/todos/:todo_id` | —                 | `{ todo_id, title, is_complete, user_id }`   |
+| Method | Endpoint           | Request Body                              | Response                                                          |
+| ------ | ------------------ | ----------------------------------------- | ----------------------------------------------------------------- |
+| GET    | `/api/meals`       | —                                         | `[{ meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id }]` |
+| POST   | `/api/meals`       | `{ name, calories, protein_g, carbs_g, fat_g }` | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id }` |
+| DELETE | `/api/meals/:meal_id` | —                                      | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id }` |
+
+---
 
 ## Setup
 
@@ -62,7 +80,7 @@ A user has many todos. Deleting a user cascades to delete all of their todos.
 Create a local Postgres database:
 
 ```sh
-createdb todos_casestudy
+createdb nourish_db
 ```
 
 ### 2. Server
@@ -99,40 +117,45 @@ npm run dev
 
 The frontend runs on `http://localhost:5173`. The Vite dev proxy forwards all `/api` requests to the Express server so session cookies work correctly.
 
+---
+
 ## Seed Users
 
 After running `npm run db:seed`, these accounts are available:
 
-| Username | Password    |
-| -------- | ----------- |
-| alice    | password123 |
-| bob      | password123 |
+| Username  | Password    |
+| --------- | ----------- |
+| yu        | password123 |
+| chie      | password123 |
+
+---
 
 ## Application Structure
 
 ```
-swe-casestudy-7-todo-app/
+nourish/
 ├── frontend/               # React app (Vite)
 │   ├── src/
 │   │   ├── App.jsx         # Root component: currentUser state, session rehydration, auth handlers
 │   │   ├── adapters/
 │   │   │   ├── auth-adapters.js  # Fetch adapters for /api/auth/* endpoints
-│   │   │   └── todo-adapters.js  # Fetch adapters for /api/todos/* endpoints
+│   │   │   └── meal-adapters.js  # Fetch adapters for /api/meals/* endpoints
 │   │   └── components/
-│   │       ├── AuthPage.jsx    # Login + Register forms (shown when logged out)
-│   │       ├── TodoPage.jsx    # Main app container (shown when logged in)
-│   │       ├── AddTodoForm.jsx # Form to create a new todo
-│   │       ├── TodoList.jsx    # Renders a list of TodoItems
-│   │       └── TodoItem.jsx    # Single todo: checkbox, title, delete button
+│   │       ├── AuthPage.jsx      # Login + Register forms (shown when logged out)
+│   │       ├── MealPage.jsx      # Main app container (shown when logged in)
+│   │       ├── AddMealForm.jsx   # Form to log a new meal
+│   │       ├── MealList.jsx      # Renders a list of MealItems
+│   │       ├── MealItem.jsx      # Single meal entry: name, macros, delete button
+│   │       └── DailySummary.jsx  # Totals bar: calories, protein, carbs, fat
 │   └── vite.config.js      # Proxies /api requests to Express in development
 └── server/                 # Express + Postgres API
     ├── index.js            # App entry point, route definitions
     ├── controllers/
     │   ├── authControllers.js  # register, login, logout, getMe
-    │   └── todoControllers.js  # list, create, update, delete todos
+    │   └── mealControllers.js  # list, create, delete meals
     ├── models/
     │   ├── userModel.js    # SQL queries for the users table
-    │   └── todoModel.js    # SQL queries for the todos table
+    │   └── mealModel.js    # SQL queries for the meals table
     ├── middleware/
     │   ├── checkAuthentication.js  # Blocks unauthenticated requests
     │   └── logRoutes.js            # Logs each incoming request
@@ -140,3 +163,14 @@ swe-casestudy-7-todo-app/
         ├── pool.js         # Postgres connection pool
         └── seed.js         # Creates tables and inserts sample data
 ```
+
+---
+
+## Roadmap
+
+Stretch features to build next:
+
+- **Calorie / macro goals** — let users set a daily calorie and macro target and display progress toward it
+- **Edit meal entries** — add a PATCH endpoint and inline edit form so users can correct logged values
+- **Date filtering** — filter the meal list by a specific date to review past days
+- **Nutrition search** — integrate a third-party food API (e.g. Open Food Facts) to auto-fill macro data by food name

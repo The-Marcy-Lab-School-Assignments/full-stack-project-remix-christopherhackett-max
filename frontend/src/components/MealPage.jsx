@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchAllTodos } from '../adapters/todo-adapters';
-import AddTodoForm from './AddTodoForm';
-import TodoList from './TodoList';
+import AddTodoForm from './AddMealForm';
+import TodoList from './MealList';
 
 function TodoPage({ currentUser, handleLogout }) {
   const [todos, setTodos] = useState([]);
