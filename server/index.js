@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 8080;
 
 app.use(logRoutes);
 app.use(cookieSession({ name: 'session', secret: process.env.SESSION_SECRET }));
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 // In production, serve the built React app from frontend/dist.
 // In development, Vite's dev server handles the frontend on a separate port
@@ -31,6 +31,8 @@ app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.post('/api/auth/register', authControllers.register);
 app.post('/api/auth/login', authControllers.login);
 app.get('/api/auth/me', authControllers.getMe);
+app.patch('/api/auth/me', checkAuthentication, authControllers.updateAccount);
+app.delete('/api/auth/me', checkAuthentication, authControllers.deleteAccount);
 app.delete('/api/auth/logout', authControllers.logout);
 
 // ====================================
@@ -39,6 +41,7 @@ app.delete('/api/auth/logout', authControllers.logout);
 
 app.get('/api/meals', checkAuthentication, mealControllers.listMeals);
 app.post('/api/meals', checkAuthentication, mealControllers.createMeal);
+app.get('/api/meals/:meal_id', checkAuthentication, mealControllers.getMeal);
 app.delete('/api/meals/:meal_id', checkAuthentication, mealControllers.deleteMeal);
 
 // ====================================
@@ -55,4 +58,11 @@ app.use(handleError);
 // Listen
 // ====================================
 
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+mealControllers.ensureSchema?.()
+  .then(() => {
+    app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+  })
+  .catch((err) => {
+    console.error('Error preparing database schema:', err);
+    process.exit(1);
+  });

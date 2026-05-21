@@ -1,5 +1,9 @@
 const mealModel = require('../models/mealModel');
 
+module.exports.ensureSchema = async () => {
+  await mealModel.ensurePhotoColumn();
+};
+
 module.exports.listMeals = async (req, res, next) => {
   try {
     const meals = await mealModel.listByUser(req.session.user_id);
@@ -9,14 +13,28 @@ module.exports.listMeals = async (req, res, next) => {
   }
 };
 
+module.exports.getMeal = async (req, res, next) => {
+  try {
+    const { meal_id } = req.params;
+    const meal = await mealModel.findByUser(meal_id, req.session.user_id);
+    if (!meal) return res.status(404).send({ error: 'Meal not found.' });
+    res.send(meal);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports.createMeal = async (req, res, next) => {
   try {
-    const { name, calories, protein_g = 0, carbs_g = 0, fat_g = 0 } = req.body;
+    const { name, calories, protein_g = 0, carbs_g = 0, fat_g = 0, photo_data = null } = req.body;
 
     if (!name) return res.status(400).send({ error: 'Name is required.' });
     if (calories === undefined) return res.status(400).send({ error: 'Calories is required.' });
+    if (photo_data && !photo_data.startsWith('data:image/')) {
+      return res.status(400).send({ error: 'Photo must be an image.' });
+    }
 
-    const meal = await mealModel.create(name, calories, protein_g, carbs_g, fat_g, req.session.user_id);
+    const meal = await mealModel.create(name, calories, protein_g, carbs_g, fat_g, photo_data, req.session.user_id);
     res.status(201).send(meal);
   } catch (err) {
     next(err);

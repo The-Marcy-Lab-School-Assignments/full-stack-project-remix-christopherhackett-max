@@ -1,5 +1,11 @@
 const userModel = require('../models/userModel');
 
+const clearSessionCookies = (req, res) => {
+  req.session = null;
+  res.clearCookie('session', { path: '/' });
+  res.clearCookie('session.sig', { path: '/' });
+};
+
 module.exports.register = async (req, res, next) => {
   try {
     const { username, password } = req.body;
@@ -45,7 +51,41 @@ module.exports.getMe = async (req, res, next) => {
   }
 };
 
+module.exports.updateAccount = async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const cleanUsername = username?.trim();
+    const cleanPassword = password?.trim();
+
+    if (!cleanUsername) {
+      return res.status(400).send({ error: 'Username is required.' });
+    }
+
+    const existingUser = await userModel.findByUsername(cleanUsername);
+    if (existingUser && existingUser.user_id !== req.session.user_id) {
+      return res.status(400).send({ error: 'Username already taken.' });
+    }
+
+    const user = await userModel.update(req.session.user_id, cleanUsername, cleanPassword);
+    if (!user) return res.status(404).send({ error: 'User not found.' });
+    res.send(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports.deleteAccount = async (req, res, next) => {
+  try {
+    const deletedUser = await userModel.destroy(req.session.user_id);
+    if (!deletedUser) return res.status(404).send({ error: 'User not found.' });
+    clearSessionCookies(req, res);
+    res.send(deletedUser);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports.logout = (req, res) => {
-  req.session = null;
+  clearSessionCookies(req, res);
   res.send({ message: 'Logged out.' });
 };

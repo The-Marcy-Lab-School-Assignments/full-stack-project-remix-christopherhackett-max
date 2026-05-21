@@ -1,6 +1,9 @@
 const handleFetch = async (url, options = {}) => {
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, {
+      credentials: 'include',
+      ...options,
+    });
     if (!response.ok) throw new Error(`Fetch failed. ${response.status} ${response.statusText}`);
     const data = await response.json();
     return { data, error: null };
@@ -9,26 +12,22 @@ const handleFetch = async (url, options = {}) => {
   }
 };
 
-export const fetchAllTodos = async () => {
-  return handleFetch('/api/todos');
+export const fetchAllMeals = async () => {
+  return handleFetch('/api/meals');
 };
 
-export const createTodo = async (title) => {
-  return handleFetch('/api/todos', {
+export const fetchMeal = async (meal_id) => {
+  return handleFetch(`/api/meals/${meal_id}`);
+};
+
+export const createMeal = async (name, calories, protein_g, carbs_g, fat_g, photo_data = null) => {
+  return handleFetch('/api/meals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ name, calories, protein_g, carbs_g, fat_g, photo_data }),
   });
 };
 
-export const updateTodo = async (todo_id, updates) => {
-  return handleFetch(`/api/todos/${todo_id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
-  });
-};
-
-export const deleteTodo = async (todo_id) => {
-  return handleFetch(`/api/todos/${todo_id}`, { method: 'DELETE' });
+export const deleteMeal = async (meal_id) => {
+  return handleFetch(`/api/meals/${meal_id}`, { method: 'DELETE' });
 };

@@ -1,35 +1,68 @@
 # Nourish — Full-Stack Nutrition Tracker
 
+Nourish is a full-stack nutrition tracking app built with React, Express, and Postgres. Users can register, log in, manage their account, and track meals with calories and macros.
 
-A full-stack nutrition tracking app built with React, Express, and Postgres. Demonstrates session-based authentication, session rehydration, auth-dependent data fetching, and conditional rendering — the same patterns used across full-stack projects.
+The frontend uses a bold Persona 4-inspired visual style: yellow backgrounds, black diagonal panels, chunky type, dark menu/list rows, and colorful accent stripes.
 
 ---
 
 ## Mission Statement
 
-Nourish is for anyone who wants a simple, no-nonsense way to track their daily food intake and nutrition goals. Whether you're counting calories, monitoring protein, or just trying to build healthier habits, Nourish gives you a clean personal log to record meals and review your progress — no premium paywalls, no noise, just the data you need.
+Nourish is for anyone who wants a simple way to track meals and nutrition goals. Whether someone is counting calories, monitoring protein, or building healthier habits, Nourish gives them a personal meal log without extra noise.
 
 ---
 
-## User Stories
+## Features
 
-**Auth**
-- A user can register for an account with a username and password
-- A user can log in to an existing account
-- A user can log out
-- A returning user who has an active session is automatically logged in when they revisit the app
+**Authentication**
+- Register with a username and password
+- Log in and log out
+- Stay logged in across page refreshes with session cookies
+- Protect app pages from unauthenticated users
 
-**Nutrition Logs**
-- A logged-in user can see all of their logged meals
-- A logged-in user can add a new meal entry with a name, calories, protein, carbs, and fat
-- A logged-in user can delete a meal entry
-- A logged-in user can see a daily summary of their total calories and macros
+**Account**
+- View the logged-in username
+- Update username
+- Optionally update password
+- Delete the account
+- Delete related meals automatically when an account is deleted
+
+**Meals**
+- View all logged meals
+- Add a meal with name, calories, protein, carbs, and fat
+- Upload a meal photo when creating a meal
+- Delete a meal
+- Open a meal detail page with a macro breakdown
+
+**Frontend Views**
+- Login/Register page
+- Main Menu page
+- Meal List page
+- Add Meal page
+- Meal Detail page
+- Account page
+
+---
+
+## Tech Stack
+
+**Frontend**
+- React
+- React Router
+- Vite
+- CSS
+
+**Backend**
+- Express
+- Postgres
+- cookie-session
+- bcrypt
 
 ---
 
 ## Schema
 
-```
+```txt
 users
 ─────────────────────────────
 user_id       SERIAL PRIMARY KEY
@@ -44,11 +77,12 @@ calories    INTEGER NOT NULL
 protein_g   INTEGER NOT NULL DEFAULT 0
 carbs_g     INTEGER NOT NULL DEFAULT 0
 fat_g       INTEGER NOT NULL DEFAULT 0
+photo_data  TEXT
 logged_at   TIMESTAMPTZ DEFAULT NOW()
 user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
 ```
 
-A user has many meals. Deleting a user cascades to delete all of their meal entries.
+A user has many meals. Deleting a user cascades to delete all of that user's meal entries.
 
 ---
 
@@ -60,16 +94,21 @@ A user has many meals. Deleting a user cascades to delete all of their meal entr
 | ------ | -------------------- | ------------------------ | --------------------------------- |
 | POST   | `/api/auth/register` | `{ username, password }` | `{ user_id, username }`           |
 | POST   | `/api/auth/login`    | `{ username, password }` | `{ user_id, username }`           |
-| DELETE | `/api/auth/logout`   | —                        | `{ message }`                     |
 | GET    | `/api/auth/me`       | —                        | `{ user_id, username }` or `null` |
+| PATCH  | `/api/auth/me`       | `{ username, password }` | `{ user_id, username }`           |
+| DELETE | `/api/auth/me`       | —                        | `{ user_id, username }`           |
+| DELETE | `/api/auth/logout`   | —                        | `{ message }`                     |
 
-### Meal Endpoints (all require authentication)
+### Meal Endpoints
 
-| Method | Endpoint           | Request Body                              | Response                                                          |
-| ------ | ------------------ | ----------------------------------------- | ----------------------------------------------------------------- |
-| GET    | `/api/meals`       | —                                         | `[{ meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id }]` |
-| POST   | `/api/meals`       | `{ name, calories, protein_g, carbs_g, fat_g }` | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id }` |
-| DELETE | `/api/meals/:meal_id` | —                                      | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id }` |
+All meal endpoints require authentication.
+
+| Method | Endpoint              | Request Body                                    | Response                                                          |
+| ------ | --------------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
+| GET    | `/api/meals`          | —                                                           | `[{ meal_id, name, calories, protein_g, carbs_g, fat_g, photo_data, logged_at, user_id }]` |
+| POST   | `/api/meals`          | `{ name, calories, protein_g, carbs_g, fat_g, photo_data }` | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, photo_data, logged_at, user_id }` |
+| GET    | `/api/meals/:meal_id` | —                                                           | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, photo_data, logged_at, user_id }` |
+| DELETE | `/api/meals/:meal_id` | —                                                           | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, photo_data, logged_at, user_id }` |
 
 ---
 
@@ -100,7 +139,7 @@ npm run db:seed
 Start the server:
 
 ```sh
-npm run dev
+npm start
 ```
 
 The server runs on `http://localhost:8080`.
@@ -115,7 +154,7 @@ npm install
 npm run dev
 ```
 
-The frontend runs on `http://localhost:5173`. The Vite dev proxy forwards all `/api` requests to the Express server so session cookies work correctly.
+The frontend runs on `http://localhost:5173`. The Vite dev proxy forwards `/api` requests to the Express server so session cookies work correctly.
 
 ---
 
@@ -123,54 +162,58 @@ The frontend runs on `http://localhost:5173`. The Vite dev proxy forwards all `/
 
 After running `npm run db:seed`, these accounts are available:
 
-| Username  | Password    |
-| --------- | ----------- |
-| yu        | password123 |
-| chie      | password123 |
+| Username | Password    |
+| -------- | ----------- |
+| yu       | password123 |
+| chie     | password123 |
 
 ---
 
 ## Application Structure
 
-```
+```txt
 nourish/
-├── frontend/               # React app (Vite)
+├── frontend/                     # React app
 │   ├── src/
-│   │   ├── App.jsx         # Root component: currentUser state, session rehydration, auth handlers
+│   │   ├── App.jsx               # Router, currentUser state, session rehydration
+│   │   ├── App.css               # Persona-inspired visual system
 │   │   ├── adapters/
 │   │   │   ├── auth-adapters.js  # Fetch adapters for /api/auth/* endpoints
 │   │   │   └── meal-adapters.js  # Fetch adapters for /api/meals/* endpoints
 │   │   └── components/
-│   │       ├── AuthPage.jsx      # Login + Register forms (shown when logged out)
-│   │       ├── MealPage.jsx      # Main app container (shown when logged in)
-│   │       ├── AddMealForm.jsx   # Form to log a new meal
-│   │       ├── MealList.jsx      # Renders a list of MealItems
-│   │       ├── MealItem.jsx      # Single meal entry: name, macros, delete button
-│   │       └── DailySummary.jsx  # Totals bar: calories, protein, carbs, fat
-│   └── vite.config.js      # Proxies /api requests to Express in development
-└── server/                 # Express + Postgres API
-    ├── index.js            # App entry point, route definitions
+│   │       ├── AuthPage.jsx      # Login and register forms
+│   │       ├── MenuPage.jsx      # Main menu after login
+│   │       ├── AccountPage.jsx   # View, update, logout, and delete account
+│   │       ├── MealListPage.jsx  # Meal list screen
+│   │       ├── AddMealPage.jsx   # Page wrapper for the add meal form
+│   │       ├── AddMealForm.jsx   # Form to create a meal
+│   │       ├── MealList.jsx      # Renders meal rows
+│   │       ├── MealItem.jsx      # Clickable meal row and delete button
+│   │       ├── MealDetailPage.jsx # Single meal macro view
+│   │       └── MealPage.jsx      # Compatibility wrapper for meal list page
+│   └── vite.config.js            # Proxies /api requests to Express in development
+└── server/                       # Express + Postgres API
+    ├── index.js                  # App entry point and route definitions
     ├── controllers/
-    │   ├── authControllers.js  # register, login, logout, getMe
-    │   └── mealControllers.js  # list, create, delete meals
+    │   ├── authControllers.js    # register, login, logout, get/update/delete account
+    │   └── mealControllers.js    # list, create, get, delete meals
     ├── models/
-    │   ├── userModel.js    # SQL queries for the users table
-    │   └── mealModel.js    # SQL queries for the meals table
+    │   ├── userModel.js          # SQL queries for users
+    │   └── mealModel.js          # SQL queries for meals
     ├── middleware/
-    │   ├── checkAuthentication.js  # Blocks unauthenticated requests
-    │   └── logRoutes.js            # Logs each incoming request
+    │   ├── checkAuthentication.js
+    │   └── logRoutes.js
     └── db/
-        ├── pool.js         # Postgres connection pool
-        └── seed.js         # Creates tables and inserts sample data
+        ├── pool.js
+        └── seed.js
 ```
 
 ---
 
 ## Roadmap
 
-Stretch features to build next:
-
-- **Calorie / macro goals** — let users set a daily calorie and macro target and display progress toward it
-- **Edit meal entries** — add a PATCH endpoint and inline edit form so users can correct logged values
-- **Date filtering** — filter the meal list by a specific date to review past days
-- **Nutrition search** — integrate a third-party food API (e.g. Open Food Facts) to auto-fill macro data by food name
+- Edit existing meal entries
+- Add date filtering for meal history
+- Add daily calorie and macro totals
+- Add goal tracking for calories, protein, carbs, and fat
+- Add nutrition search or food API integration

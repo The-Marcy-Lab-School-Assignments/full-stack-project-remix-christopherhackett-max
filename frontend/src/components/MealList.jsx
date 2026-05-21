@@ -1,17 +1,21 @@
-import TodoItem from './MealItem';
+import MealItem from './MealItem';
 
-function TodoList({ todos, loadTodos }) {
+function MealList({ meals, loadMeals }) {
+  if (meals.length === 0) {
+    return <p className="panel-message">No meals logged yet.</p>;
+  }
+
   return (
-    <ul id="todo-list">
-      {todos.map((todo) => (
-        <TodoItem
-          key={todo.todo_id}
-          todo={todo}
-          loadTodos={loadTodos}
+    <ul className="meal-list">
+      {meals.map((meal) => (
+        <MealItem
+          key={meal.meal_id}
+          meal={meal}
+          loadMeals={loadMeals}
         />
       ))}
     </ul>
   );
 }
 
-export default TodoList;
+export default MealList;

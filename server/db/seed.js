@@ -23,6 +23,7 @@ const seed = async () => {
       protein_g   INTEGER NOT NULL DEFAULT 0,
       carbs_g     INTEGER NOT NULL DEFAULT 0,
       fat_g       INTEGER NOT NULL DEFAULT 0,
+      photo_data  TEXT,
       logged_at   TIMESTAMPTZ DEFAULT NOW(),
       user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
     )

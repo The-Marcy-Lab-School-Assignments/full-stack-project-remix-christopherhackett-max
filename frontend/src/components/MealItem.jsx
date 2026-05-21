@@ -1,29 +1,22 @@
-import { updateTodo, deleteTodo } from '../adapters/todo-adapters';
+import { Link } from 'react-router-dom';
+import { deleteMeal } from '../adapters/meal-adapters';
 
-function TodoItem({ todo, loadTodos }) {
-  const handleChange = async (e) => {
-    const { error } = await updateTodo(todo.todo_id, { is_complete: e.target.checked });
-    if (error) return console.error(error);
-    loadTodos();
-  };
-
+function MealItem({ meal, loadMeals }) {
   const handleDelete = async () => {
-    const { error } = await deleteTodo(todo.todo_id);
+    const { error } = await deleteMeal(meal.meal_id);
     if (error) return console.error(error);
-    loadTodos();
+    loadMeals();
   };
 
   return (
-    <li className="todo-item">
-      <input
-        type="checkbox"
-        checked={todo.is_complete}
-        onChange={handleChange}
-      />
-      <span className={todo.is_complete ? 'completed' : ''}>{todo.title}</span>
-      <button className="delete-btn" onClick={handleDelete}>Delete</button>
+    <li className="meal-row">
+      <Link to={`/meals/${meal.meal_id}`} className="meal-row-link">
+        <span>{meal.name}</span>
+        <strong>{meal.calories}</strong>
+      </Link>
+      <button className="delete-btn" type="button" onClick={handleDelete}>Delete</button>
     </li>
   );
 }
 
-export default TodoItem;
+export default MealItem;

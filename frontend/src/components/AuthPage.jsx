@@ -74,10 +74,17 @@ function RegisterForm({ handleRegister }) {
 
 function AuthPage({ handleLogin, handleRegister }) {
   return (
-    <div id="auth-section">
-      <LoginForm handleLogin={handleLogin} />
-      <RegisterForm handleRegister={handleRegister} />
-    </div>
+    <main className="p4-screen auth-screen">
+      <div className="title-card">
+        <p className="small-label">Press start by signing in</p>
+        <h1>Nourish</h1>
+      </div>
+      <section id="auth-section" aria-label="Authentication">
+        <LoginForm handleLogin={handleLogin} />
+        <RegisterForm handleRegister={handleRegister} />
+      </section>
+      <div className="rainbow-bar" aria-hidden="true" />
+    </main>
   );
 }
 
