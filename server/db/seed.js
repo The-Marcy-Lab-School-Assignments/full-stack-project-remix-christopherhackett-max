@@ -4,8 +4,7 @@ const pool = require('./pool');
 const SALT_ROUNDS = 8;
 
 const seed = async () => {
-  // Drop tables in reverse dependency order (todos references users via FK)
-  await pool.query('DROP TABLE IF EXISTS todos');
+  await pool.query('DROP TABLE IF EXISTS meals');
   await pool.query('DROP TABLE IF EXISTS users');
 
   await pool.query(`
@@ -17,39 +16,42 @@ const seed = async () => {
   `);
 
   await pool.query(`
-    CREATE TABLE todos (
-      todo_id     SERIAL PRIMARY KEY,
-      title       TEXT NOT NULL,
-      is_complete BOOLEAN NOT NULL DEFAULT FALSE,
-      user_id     INT REFERENCES users(user_id) ON DELETE CASCADE
+    CREATE TABLE meals (
+      meal_id     SERIAL PRIMARY KEY,
+      name        TEXT NOT NULL,
+      calories    INTEGER NOT NULL,
+      protein_g   INTEGER NOT NULL DEFAULT 0,
+      carbs_g     INTEGER NOT NULL DEFAULT 0,
+      fat_g       INTEGER NOT NULL DEFAULT 0,
+      photo_data  TEXT,
+      logged_at   TIMESTAMPTZ DEFAULT NOW(),
+      user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
     )
   `);
 
-  // Hash passwords in parallel — bcrypt is slow by design (CPU-bound hashing)
-  const [aliceHash, bobHash] = await Promise.all([
+  const [yuHash, chieHash] = await Promise.all([
     bcrypt.hash('password123', SALT_ROUNDS),
     bcrypt.hash('password123', SALT_ROUNDS),
   ]);
 
-  // RETURNING captures inserted user_ids so we don't hardcode them
   const { rows: users } = await pool.query(`
     INSERT INTO users (username, password_hash) VALUES
-      ('alice', $1),
-      ('bob',   $2)
+      ('yu',   $1),
+      ('chie', $2)
     RETURNING user_id, username
-  `, [aliceHash, bobHash]);
+  `, [yuHash, chieHash]);
 
-  const [alice, bob] = users;
+  const [yu, chie] = users;
 
   await pool.query(`
-    INSERT INTO todos (title, is_complete, user_id) VALUES
-      ('Buy groceries',        FALSE, $1),
-      ('Walk the dog',         FALSE, $1),
-      ('Read a book',          TRUE,  $1),
-      ('Set up the database',  TRUE,  $2),
-      ('Build the API',        TRUE,  $2),
-      ('Build the frontend',   FALSE, $2)
-  `, [alice.user_id, bob.user_id]);
+    INSERT INTO meals (name, calories, protein_g, carbs_g, fat_g, user_id) VALUES
+      ('Oatmeal with berries',     320,  8, 58,  6, $1),
+      ('Grilled chicken breast',   280, 52,  0,  6, $1),
+      ('Brown rice and broccoli',  410, 14, 78,  4, $1),
+      ('Greek yogurt parfait',     290, 20, 38,  5, $2),
+      ('Salmon with quinoa',       480, 42, 36, 14, $2),
+      ('Protein shake',            200, 30, 10,  4, $2)
+  `, [yu.user_id, chie.user_id]);
 
   return users;
 };
