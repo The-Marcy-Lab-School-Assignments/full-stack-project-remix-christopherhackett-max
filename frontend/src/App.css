@@ -385,6 +385,32 @@ form button {
   padding: 0.6rem;
 }
 
+.meal-day + .meal-day {
+  border-top: 3px solid #111;
+}
+
+.meal-day-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.35rem 1rem;
+  background: #ffe900;
+  color: #111;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.meal-row-name {
+  display: grid;
+}
+
+.meal-row-name small {
+  color: #ffe900;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
 .meal-row {
   display: grid;
   grid-template-columns: 1fr auto;

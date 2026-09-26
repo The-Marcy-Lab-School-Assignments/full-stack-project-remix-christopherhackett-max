@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchAllMeals } from '../adapters/meal-adapters';
 import MealList from './MealList';
 
-function MealListPage() {
+function MealListPage({ currentUser }) {
   const [meals, setMeals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,7 +38,7 @@ function MealListPage() {
         </div>
         {isLoading && <p className="panel-message">Loading meals...</p>}
         {error && <p className="error">{error}</p>}
-        {!isLoading && !error && <MealList meals={meals} loadMeals={loadMeals} />}
+        {!isLoading && !error && <MealList meals={meals} loadMeals={loadMeals} timezone={currentUser?.timezone} />}
       </section>
       <div className="rainbow-bar vertical" aria-hidden="true" />
     </main>
