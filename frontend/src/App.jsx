@@ -77,7 +77,7 @@ function App() {
             : <Navigate to="/" replace />}
         />
         <Route
-          path="/meals/:meal_id"
+          path="/meals/:saved_meal_id"
           element={currentUser
             ? <MealDetailPage />
             : <Navigate to="/" replace />}

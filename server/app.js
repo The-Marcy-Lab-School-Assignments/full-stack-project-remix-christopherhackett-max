@@ -7,6 +7,7 @@ const logRoutes = require('./middleware/logRoutes');
 const checkAuthentication = require('./middleware/checkAuthentication');
 const authControllers = require('./controllers/authControllers');
 const mealControllers = require('./controllers/mealControllers');
+const savedMealControllers = require('./controllers/savedMealControllers');
 const nutritionControllers = require('./controllers/nutritionControllers');
 const planControllers = require('./controllers/planControllers');
 
@@ -42,9 +43,18 @@ app.delete('/api/auth/logout', authControllers.logout);
 // ====================================
 
 app.get('/api/meals', checkAuthentication, mealControllers.listMeals);
-app.post('/api/meals', checkAuthentication, mealControllers.createMeal);
+app.post('/api/meals', checkAuthentication, mealControllers.logMeal);
 app.get('/api/meals/:meal_id', checkAuthentication, mealControllers.getMeal);
 app.delete('/api/meals/:meal_id', checkAuthentication, mealControllers.deleteMeal);
+
+// ====================================
+// Saved meal routes (all require authentication)
+// ====================================
+
+app.get('/api/saved-meals', checkAuthentication, savedMealControllers.listSavedMeals);
+app.post('/api/saved-meals', checkAuthentication, savedMealControllers.createSavedMeal);
+app.get('/api/saved-meals/:saved_meal_id', checkAuthentication, savedMealControllers.getSavedMeal);
+app.delete('/api/saved-meals/:saved_meal_id', checkAuthentication, savedMealControllers.deleteSavedMeal);
 
 // ====================================
 // Nutrition report routes (all require authentication)

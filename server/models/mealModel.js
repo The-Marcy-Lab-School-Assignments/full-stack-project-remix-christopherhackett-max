@@ -1,9 +1,11 @@
 const pool = require('../db/pool');
 
-// Returns all meals for a specific user, ordered by most recently logged
+// Returns every meal a user has eaten, most recent first. Photos are left out
+// because they are large and the history list doesn't show them.
 module.exports.listByUser = async (user_id) => {
   const query = `
-    SELECT * FROM meals
+    SELECT meal_id, saved_meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id
+    FROM meals
     WHERE user_id = $1
     ORDER BY logged_at DESC
   `;
@@ -25,15 +27,20 @@ module.exports.findByUser = async (meal_id, user_id) => {
   return rows[0] || null;
 };
 
-// Creates a new meal entry. Returns the full meal row.
-module.exports.create = async (name, calories, protein_g, carbs_g, fat_g, photo_data, user_id) => {
+// Logs one of the user's saved meals as eaten right now. Copies the saved
+// meal's name and numbers onto the new row so history stays accurate if the
+// saved meal changes later. Returns the new row, or null if the saved meal
+// doesn't exist or belongs to someone else.
+module.exports.logSavedMeal = async (saved_meal_id, user_id) => {
   const query = `
-    INSERT INTO meals (name, calories, protein_g, carbs_g, fat_g, photo_data, user_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING *
+    INSERT INTO meals (name, calories, protein_g, carbs_g, fat_g, user_id, saved_meal_id)
+    SELECT name, calories, protein_g, carbs_g, fat_g, user_id, saved_meal_id
+    FROM saved_meals
+    WHERE saved_meal_id = $1 AND user_id = $2
+    RETURNING meal_id, saved_meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id
   `;
-  const { rows } = await pool.query(query, [name, calories, protein_g, carbs_g, fat_g, photo_data, user_id]);
-  return rows[0];
+  const { rows } = await pool.query(query, [saved_meal_id, user_id]);
+  return rows[0] || null;
 };
 
 // Deletes a meal by id. Returns the deleted row.

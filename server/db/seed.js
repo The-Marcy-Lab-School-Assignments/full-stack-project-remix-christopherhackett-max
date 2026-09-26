@@ -131,9 +131,11 @@ const seedPlans = async (user) => {
 
   for (const { day, slot, meal, meal_id } of plans) {
     await pool.query(`
-      INSERT INTO planned_meals (user_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g, meal_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    `, [user.user_id, day, slot, meal.name, meal.calories, meal.protein_g, meal.carbs_g, meal.fat_g, meal_id]);
+      INSERT INTO planned_meals (user_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g, meal_id, saved_meal_id)
+      SELECT $1, $2, $3, name, calories, protein_g, carbs_g, fat_g, $5, saved_meal_id
+      FROM saved_meals
+      WHERE user_id = $1 AND name = $4
+    `, [user.user_id, day, slot, meal.name, meal_id]);
   }
   return plans.length;
 };
@@ -171,6 +173,18 @@ const seed = async () => {
     users.push({ ...rows[0], profile });
   }
 
+  // Every user starts with the whole meal library saved, typed by the slot
+  // it's listed under.
+  const library = Object.entries(MEAL_LIBRARY).flatMap(([meal_type, meals]) => meals.map((meal) => [meal_type, ...meal]));
+  for (const user of users) {
+    for (const [meal_type, name, calories, protein_g, carbs_g, fat_g] of library) {
+      await pool.query(`
+        INSERT INTO saved_meals (user_id, name, meal_type, calories, protein_g, carbs_g, fat_g)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [user.user_id, name, meal_type, calories, protein_g, carbs_g, fat_g]);
+    }
+  }
+
   const mealRows = users.flatMap((user) => buildMealRows(user.profile, user.user_id));
   const column = (key) => mealRows.map((row) => row[key]);
 
@@ -178,14 +192,15 @@ const seed = async () => {
   // plus a local time is a timestamp without time zone; AT TIME ZONE turns it
   // into the correct UTC instant. Meals later today than right now are skipped.
   const { rowCount } = await pool.query(`
-    INSERT INTO meals (name, calories, protein_g, carbs_g, fat_g, user_id, logged_at)
+    INSERT INTO meals (name, calories, protein_g, carbs_g, fat_g, user_id, saved_meal_id, logged_at)
     SELECT * FROM (
       SELECT
-        m.name, m.calories, m.protein_g, m.carbs_g, m.fat_g, user_id,
+        m.name, m.calories, m.protein_g, m.carbs_g, m.fat_g, m.user_id, s.saved_meal_id,
         (((NOW() AT TIME ZONE u.timezone)::date - m.days_ago) + m.local_time) AT TIME ZONE u.timezone AS logged_at
       FROM unnest($1::text[], $2::int[], $3::int[], $4::int[], $5::int[], $6::int[], $7::int[], $8::time[])
         AS m(name, calories, protein_g, carbs_g, fat_g, user_id, days_ago, local_time)
-      JOIN users u USING (user_id)
+      JOIN users u ON u.user_id = m.user_id
+      JOIN saved_meals s ON s.user_id = m.user_id AND s.name = m.name
     ) AS generated
     WHERE logged_at <= NOW()
   `, [
@@ -203,6 +218,7 @@ seed()
     console.log('Database seeded successfully.');
     console.log(`  Users: ${users.map((u) => `${u.username} (${u.timezone})`).join(', ')}`);
     console.log(`  Meals: ${mealCount} across the last ${HISTORY_DAYS} days`);
+    console.log(`  Saved meals: ${Object.values(MEAL_LIBRARY).flat().length} per user`);
     console.log(`  Planned meals: ${planCount} for ${PLAN_USERNAME}, last week and this week`);
   })
   .catch((err) => {

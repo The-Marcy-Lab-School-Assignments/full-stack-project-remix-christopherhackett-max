@@ -195,6 +195,20 @@ form input {
   font-weight: 800;
 }
 
+form select {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.8rem;
+  padding: 0.7rem 0.8rem;
+  border: 3px solid #111;
+  border-radius: 0;
+  background: #fff;
+  color: #111;
+  font-family: Arial, sans-serif;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
 form input[type="file"] {
   background: #fff;
   cursor: pointer;
@@ -1008,6 +1022,169 @@ form button {
   margin: 0;
 }
 
+/* ====================================
+   My Meals
+   ==================================== */
+
+.meal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.meal-tabs button,
+.meal-tabs-add {
+  padding: 0.3rem 0.8rem;
+  border: 2px solid #fff;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.meal-tabs button.active {
+  background: #ffe900;
+  border-color: #ffe900;
+  color: #111;
+}
+
+.meal-tabs-add {
+  margin-left: auto;
+}
+
+.meal-tabs-add:hover {
+  background: #fff;
+  color: #111;
+}
+
+.saved-meal-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.log-btn {
+  min-height: 3rem;
+  padding: 0.35rem 0.65rem;
+  border: 3px solid #111;
+  background: #ffe900;
+  color: #111;
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 #111;
+}
+
+.log-btn:hover {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 #111;
+}
+
+.success-message {
+  margin: 0.6rem;
+  padding: 0.4rem 0.8rem;
+  background: #111;
+  color: #00e091;
+}
+
+.meal-day .panel-message a {
+  text-decoration: underline;
+}
+
+.meal-eaten-stats {
+  margin: 0.5rem 0 1rem;
+  font-family: Arial, sans-serif;
+  font-weight: 900;
+}
+
+.meal-picker {
+  padding: 1.25rem;
+  background: rgba(18, 18, 18, 0.97);
+  color: #fff;
+  border: 4px solid #fff;
+  box-shadow: 8px 8px 0 #111;
+}
+
+.meal-picker h2 {
+  margin: 0 0 0.75rem;
+  font-size: 2rem;
+  text-transform: uppercase;
+}
+
+.meal-picker a {
+  color: #ffe900;
+  text-decoration: underline;
+}
+
+.picker-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  font-family: Arial, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.picker-list {
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+.picker-list button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-left: 8px solid #ffe900;
+  background: #262626;
+  color: #fff;
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+  font-weight: 900;
+  text-align: left;
+}
+
+.picker-list button:hover,
+.picker-list button:focus-visible {
+  background: #ffe900;
+  color: #111;
+}
+
+.picker-list small {
+  display: block;
+  color: #bcbcbc;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.picker-list button:hover small {
+  color: #333;
+}
+
+.meal-picker .account-actions button {
+  padding: 0.65rem 1rem;
+  border: 3px solid #111;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 #111;
+}
+
 @media (min-width: 1100px) {
   .plan-week {
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1046,7 +1223,8 @@ form button {
     grid-template-columns: 1fr;
   }
 
-  .delete-btn {
+  .delete-btn,
+  .saved-meal-actions {
     justify-self: end;
   }
 

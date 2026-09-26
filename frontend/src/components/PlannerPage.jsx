@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPlan, deletePlan, fetchWeek, logPlan } from '../adapters/plan-adapters';
-import PlanForm from './PlanForm';
+import MealPicker from './MealPicker';
 
 const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -132,8 +132,10 @@ function PlannerPage() {
   const handleLog = (plan) => runAction(() => logPlan(plan.planned_meal_id));
   const handleDelete = (plan) => runAction(() => deletePlan(plan.planned_meal_id));
 
-  const handleSubmitPlan = async (fields) => {
-    const { error: requestError } = await createPlan({ ...fields, plan_date: adding.day, slot: adding.slot });
+  const handlePickMeal = async (meal) => {
+    const { error: requestError } = await createPlan({
+      plan_date: adding.day, slot: adding.slot, saved_meal_id: meal.saved_meal_id,
+    });
     if (requestError) return requestError.message;
     setAdding(null);
     await loadWeek();
@@ -199,10 +201,10 @@ function PlannerPage() {
       </p>
 
       {adding && (
-        <PlanForm
+        <MealPicker
           dayLabel={formatDay(adding.day, { weekday: 'long', month: 'long', day: 'numeric' })}
           slot={adding.slot}
-          onSubmit={handleSubmitPlan}
+          onPick={handlePickMeal}
           onCancel={() => setAdding(null)}
         />
       )}

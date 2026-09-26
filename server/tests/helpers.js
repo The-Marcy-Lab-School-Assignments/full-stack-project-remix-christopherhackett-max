@@ -49,3 +49,12 @@ export const createPlan = async (user_id, plan_date, slot, calories, meal_id = n
   `, [user_id, plan_date, slot, calories, meal_id]);
   return rows[0].planned_meal_id;
 };
+
+export const createSavedMeal = async (user_id, name, meal_type, calories) => {
+  const { rows } = await pool.query(`
+    INSERT INTO saved_meals (user_id, name, meal_type, calories)
+    VALUES ($1, $2, $3, $4)
+    RETURNING saved_meal_id
+  `, [user_id, name, meal_type, calories]);
+  return rows[0].saved_meal_id;
+};

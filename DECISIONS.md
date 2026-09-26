@@ -226,6 +226,87 @@ anyone probe which ids exist. The query filters on both `planned_meal_id` and
   without a session, plus validation (text calories, fractional or negative
   numbers, bad dates and slots, non-numeric ids) and ownership over HTTP.
 
+# Part 3: Saved Meals
+
+## The question
+
+Meals used to be one table doing two jobs: "a meal I eat" (Turkey sandwich,
+520 calories) and "a time I ate it" (Friday, 12:30). Every sandwich was
+stored again each time it was eaten, which is why the meal list looked full of
+duplicates. The planner also made you type each meal in again. The goal:
+save a meal once, sort it by type, and reuse it for logging and planning.
+
+## 16. Dimension vs fact
+
+The fix splits those two jobs into separate tables:
+- **`saved_meals`** is the collection: each meal once, with its type. In
+  data modeling this is a **dimension**: it describes things.
+- **`meals`** records each time something was eaten, and **`planned_meals`**
+  each time something was planned. These are **facts**: they record events,
+  and they point at the dimension with `saved_meal_id`.
+
+This is the same split the job's dbt work is built on (fact tables and
+dimension tables, with metrics defined on top).
+
+## 17. Facts keep their own copy of the numbers
+
+An eaten meal copies the saved meal's name, calories and macros when it's
+logged, and keeps them. Why not just point at the saved meal and look the
+numbers up?
+- If a saved meal's calories are corrected later, last month's totals
+  shouldn't silently change. What was logged is what was eaten.
+- If a saved meal is removed from My Meals, the history must survive.
+
+It's the same reason an order line keeps the price paid rather than pointing
+at today's price. The trade-off is that a name or number is stored twice. So
+`saved_meal_id` is `ON DELETE SET NULL`: removing a saved meal clears the link
+and keeps the copy.
+
+## 18. One meal per name, ignoring case
+
+A unique index on `(user_id, lower(name))`: "Oatmeal" and "oatmeal" are the
+same meal. It's an index on an expression, not a plain column, so a plain
+`UNIQUE (user_id, name)` constraint couldn't express it. Two different users
+can both save "Oatmeal". As with plans, duplicates are caught by the database
+(error `23505`, answered with a 409), not by checking first.
+
+## 19. Adding a meal doesn't log it
+
+Saving a meal to My Meals and eating it are different events, so they're
+different actions. You can save a meal you plan to eat later, and "Log it"
+records it when you do. (This was the user's call: "I can add a meal into my
+list but that doesn't necessarily mean I ate it just now.")
+
+## 20. Upgrading an existing database, once
+
+A database from before saved meals has meals and plans with names but no
+saved meals. On first startup, `ensureSchema` builds saved meals from them
+and links every row:
+- **Plans go first,** because a plan's slot is a reliable meal type.
+- **Eaten meals** have no slot, so the type is guessed from the local hour of
+  the most recent time each meal was eaten (4–10 breakfast, 11–15 lunch,
+  16–21 dinner, otherwise snack). `DISTINCT ON (user_id, lower(name))` with
+  `ORDER BY ... logged_at DESC` picks that most recent row.
+- `ON CONFLICT DO NOTHING` means a meal found in both keeps the plan's type.
+
+This must only happen **once**. Removing a saved meal sets its links to NULL on
+purpose. If the backfill ran on every start, it would find those unlinked rows
+and bring the removed meal back. So the backfill runs only in the same
+transaction that adds the `saved_meal_id` column: if the column already
+exists, it's skipped. A test removes a saved meal, restarts, and checks it
+stays removed. With the guard bypassed, that test fails.
+
+## 21. The saved meal list doesn't fan out
+
+The list shows how many times each meal was eaten:
+`saved_meals LEFT JOIN meals ... GROUP BY s.saved_meal_id` with
+`COUNT(m.meal_id)`. The join makes one row per time eaten, and grouping by the
+primary key collapses them back to one row per saved meal. (Postgres allows
+selecting any `saved_meals` column when grouping by its primary key, since
+the key determines them.) `COUNT(m.meal_id)`, not `COUNT(*)`, so a meal never
+eaten counts 0. Photos are left out of the list and replaced by `has_photo`,
+because they're large and the list doesn't show them.
+
 # Found in code review
 
 A review pass after both features were built turned up five bugs. None were

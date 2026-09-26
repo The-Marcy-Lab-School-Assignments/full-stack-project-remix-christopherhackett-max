@@ -1,5 +1,5 @@
 const planModel = require('../models/planModel');
-const { isValidDate, isValidId, parseNutrition } = require('../utils/validation');
+const { isValidDate, isValidId } = require('../utils/validation');
 
 // GET /api/plans?week=YYYY-MM-DD
 // Any date in the week works; the response starts on that week's Monday.
@@ -18,21 +18,25 @@ module.exports.getWeek = async (req, res, next) => {
   }
 };
 
-// POST /api/plans
+// POST /api/plans { plan_date, slot, saved_meal_id }
 module.exports.createPlan = async (req, res, next) => {
   try {
-    const { plan_date, slot } = req.body;
+    const { plan_date, slot, saved_meal_id } = req.body;
     if (!isValidDate(plan_date)) {
       return res.status(400).send({ error: 'plan_date must be a real date in YYYY-MM-DD format.' });
     }
     if (!planModel.SLOTS.includes(slot)) {
       return res.status(400).send({ error: `slot must be one of: ${planModel.SLOTS.join(', ')}.` });
     }
-    const { values, error } = parseNutrition(req.body);
-    if (error) return res.status(400).send({ error });
+    if (!isValidId(String(saved_meal_id))) {
+      return res.status(400).send({ error: 'saved_meal_id must be the id of one of your saved meals.' });
+    }
 
-    const plan = await planModel.create(req.session.user_id, { plan_date, slot, ...values });
-    if (!plan) return res.status(409).send({ error: `There is already a ${slot} planned for that day.` });
+    const plan = await planModel.create(req.session.user_id, { plan_date, slot, saved_meal_id });
+    if (plan.error === 'meal_not_found') return res.status(404).send({ error: 'Saved meal not found.' });
+    if (plan.error === 'slot_taken') {
+      return res.status(409).send({ error: `There is already a ${slot} planned for that day.` });
+    }
     res.status(201).send(plan);
   } catch (err) {
     next(err);

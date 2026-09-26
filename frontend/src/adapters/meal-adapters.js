@@ -16,15 +16,12 @@ export const fetchAllMeals = async () => {
   return handleFetch('/api/meals');
 };
 
-export const fetchMeal = async (meal_id) => {
-  return handleFetch(`/api/meals/${meal_id}`);
-};
-
-export const createMeal = async (name, calories, protein_g, carbs_g, fat_g, photo_data = null) => {
+// Logs one of your saved meals as eaten right now.
+export const logMeal = async (saved_meal_id) => {
   return handleFetch('/api/meals', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, calories, protein_g, carbs_g, fat_g, photo_data }),
+    body: JSON.stringify({ saved_meal_id }),
   });
 };
 

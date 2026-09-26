@@ -80,7 +80,7 @@ module.exports.getWeek = async (user_id, day) => {
   const week_start = days[0].day;
 
   const plansQuery = `
-    SELECT planned_meal_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g, meal_id
+    SELECT planned_meal_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g, meal_id, saved_meal_id
     FROM planned_meals
     WHERE user_id = $1
       AND plan_date BETWEEN $2::date AND $2::date + 6
@@ -116,21 +116,24 @@ const summarizeWeek = (days) => {
   };
 };
 
-// Creates a plan. Returns the new row, or null when that slot on that day
-// already has a plan.
-module.exports.create = async (user_id, { plan_date, slot, name, calories, protein_g, carbs_g, fat_g }) => {
+// Plans one of the user's saved meals into a slot. The plan copies the saved
+// meal's name and numbers, like an eaten meal does.
+// Returns the new row, or { error: 'meal_not_found' | 'slot_taken' }.
+module.exports.create = async (user_id, { plan_date, slot, saved_meal_id }) => {
   const query = `
-    INSERT INTO planned_meals (user_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    INSERT INTO planned_meals (user_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g, saved_meal_id)
+    SELECT user_id, $3, $4, name, calories, protein_g, carbs_g, fat_g, saved_meal_id
+    FROM saved_meals
+    WHERE saved_meal_id = $2 AND user_id = $1
     RETURNING *
   `;
   try {
-    const { rows } = await pool.query(query, [user_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g]);
-    return rows[0];
+    const { rows } = await pool.query(query, [user_id, saved_meal_id, plan_date, slot]);
+    return rows[0] || { error: 'meal_not_found' };
   } catch (err) {
     // Let the UNIQUE constraint catch duplicates instead of checking first:
     // a check-then-insert can race with a second request.
-    if (err.code === UNIQUE_VIOLATION) return null;
+    if (err.code === UNIQUE_VIOLATION) return { error: 'slot_taken' };
     throw err;
   }
 };
@@ -172,12 +175,12 @@ module.exports.logAsMeal = async (planned_meal_id, user_id) => {
     }
 
     const { rows: [meal] } = await client.query(`
-      INSERT INTO meals (name, calories, protein_g, carbs_g, fat_g, user_id, logged_at)
-      VALUES ($1, $2, $3, $4, $5, $6,
-        CASE WHEN $7 THEN NOW() ELSE ($8::date + $9::time) AT TIME ZONE $10 END)
+      INSERT INTO meals (name, calories, protein_g, carbs_g, fat_g, user_id, saved_meal_id, logged_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7,
+        CASE WHEN $8 THEN NOW() ELSE ($9::date + $10::time) AT TIME ZONE $11 END)
       RETURNING *
     `, [
-      plan.name, plan.calories, plan.protein_g, plan.carbs_g, plan.fat_g, user_id,
+      plan.name, plan.calories, plan.protein_g, plan.carbs_g, plan.fat_g, user_id, plan.saved_meal_id,
       plan.is_today, plan.plan_date, SLOT_TIMES[plan.slot], plan.timezone,
     ]);
 

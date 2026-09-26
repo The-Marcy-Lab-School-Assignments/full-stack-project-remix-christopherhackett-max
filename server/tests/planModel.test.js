@@ -3,7 +3,7 @@ import pool from '../db/pool';
 import { createSchema } from '../db/schema';
 import planModel from '../models/planModel';
 import nutritionModel from '../models/nutritionModel';
-import { createPlan, createUser, localDay, logMealAt } from './helpers';
+import { createPlan, createSavedMeal, createUser, localDay, logMealAt } from './helpers';
 
 // Mar 9, 2026 is a Monday. Weeks in these tests run Mar 9 to Mar 15.
 
@@ -132,12 +132,32 @@ describe('getWeek', () => {
 });
 
 describe('create', () => {
-  it('returns null when the slot already has a plan that day', async () => {
+  it("copies the saved meal's name and numbers onto the plan", async () => {
     const yu = await createUser('yu', 'America/New_York');
-    const plan = { plan_date: '2026-03-10', slot: 'lunch', name: 'Salad', calories: 400, protein_g: 0, carbs_g: 0, fat_g: 0 };
+    const salad = await createSavedMeal(yu, 'Salad', 'lunch', 400);
 
-    expect(await planModel.create(yu, plan)).toMatchObject({ plan_date: '2026-03-10', slot: 'lunch' });
-    expect(await planModel.create(yu, plan)).toBeNull();
+    const plan = await planModel.create(yu, { plan_date: '2026-03-10', slot: 'lunch', saved_meal_id: salad });
+
+    expect(plan).toMatchObject({ plan_date: '2026-03-10', slot: 'lunch', name: 'Salad', calories: 400, saved_meal_id: salad });
+  });
+
+  it('refuses a second plan for the same slot and day', async () => {
+    const yu = await createUser('yu', 'America/New_York');
+    const salad = await createSavedMeal(yu, 'Salad', 'lunch', 400);
+    const plan = { plan_date: '2026-03-10', slot: 'lunch', saved_meal_id: salad };
+
+    await planModel.create(yu, plan);
+
+    expect(await planModel.create(yu, plan)).toEqual({ error: 'slot_taken' });
+  });
+
+  it("refuses another user's saved meal", async () => {
+    const yu = await createUser('yu', 'America/New_York');
+    const chie = await createUser('chie', 'America/New_York');
+    const chiesMeal = await createSavedMeal(chie, 'Salad', 'lunch', 400);
+
+    expect(await planModel.create(yu, { plan_date: '2026-03-10', slot: 'lunch', saved_meal_id: chiesMeal }))
+      .toEqual({ error: 'meal_not_found' });
   });
 });
 
