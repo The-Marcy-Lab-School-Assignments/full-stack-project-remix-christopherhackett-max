@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPlan, deletePlan, fetchWeek, logPlan } from '../adapters/plan-adapters';
 import MealPicker from './MealPicker';
-
-const SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
+import { MEAL_TYPES as SLOTS } from '../mealTypes';
 
 const shiftDay = (day, offset) => {
   const date = new Date(`${day}T00:00:00Z`);

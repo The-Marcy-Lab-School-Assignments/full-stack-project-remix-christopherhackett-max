@@ -1,4 +1,4 @@
-// Input checks shared by the meal, plan, and report controllers.
+// Input checks shared by the controllers.
 
 const MIN_YEAR = 1900;
 const MAX_YEAR = 2999;
@@ -20,7 +20,7 @@ const MAX_MACRO_GRAMS = 1000;
 
 const isWholeNumberInRange = (value, max) => Number.isInteger(value) && value >= 0 && value <= max;
 
-// Validates the name and nutrition fields shared by meals and planned meals.
+// Validates the name and nutrition fields of a saved meal.
 // Returns { values } with a trimmed name and macros defaulted to 0, or
 // { error } with a message for the client. Numbers must be JSON numbers:
 // the columns are INTEGER, so 12.5 or "12" would fail in Postgres anyway.

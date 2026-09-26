@@ -1,6 +1,9 @@
 const pool = require('../db/pool');
 
-module.exports.SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'];
+const { MEAL_TYPES } = require('./savedMealModel');
+
+// A planner slot is one of the meal types.
+module.exports.SLOTS = MEAL_TYPES;
 
 // When a plan for an earlier day is logged, the meal is stamped at this local
 // time on the plan's day. Plans for today are stamped with the current time.
