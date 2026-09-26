@@ -81,6 +81,63 @@ const USER_PROFILES = [
   },
 ];
 
+// Plans for yu covering last week and this week (Monday to Sunday). On days
+// that have already happened, most plans are linked to the meal yu actually
+// logged in that slot (followed). The rest were swapped for something else, or
+// fell on a day yu didn't log at all.
+const PLAN_USERNAME = 'yu';
+const PLAN_FOLLOW_CHANCE = 0.7;
+const SLOT_BY_LOCAL_TIME = { '08:00': 'breakfast', '12:30': 'lunch', '19:00': 'dinner', '23:30': 'snack' };
+
+const shiftDay = (day, offset) => {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+};
+
+const seedPlans = async (user) => {
+  const random = createRandom(15);
+  const { rows: [{ today, last_week_start }] } = await pool.query(`
+    SELECT
+      TO_CHAR(t.today, 'YYYY-MM-DD') AS today,
+      TO_CHAR(t.today - (EXTRACT(ISODOW FROM t.today)::int - 1) - 7, 'YYYY-MM-DD') AS last_week_start
+    FROM (SELECT (NOW() AT TIME ZONE $1)::date AS today) t
+  `, [user.timezone]);
+
+  const { rows: meals } = await pool.query(`
+    SELECT meal_id, name, calories, protein_g, carbs_g, fat_g,
+      TO_CHAR(local_day, 'YYYY-MM-DD') AS day,
+      TO_CHAR(logged_at AT TIME ZONE timezone, 'HH24:MI') AS local_time
+    FROM meals_local
+    WHERE user_id = $1 AND local_day >= $2::date
+  `, [user.user_id, last_week_start]);
+  const mealAt = (day, slot) => meals.find((meal) => meal.day === day && SLOT_BY_LOCAL_TIME[meal.local_time] === slot);
+
+  const plans = [];
+  for (let offset = 0; offset < 14; offset++) {
+    const day = shiftDay(last_week_start, offset);
+    for (const slot of ['breakfast', 'lunch', 'dinner']) {
+      const eaten = day <= today ? mealAt(day, slot) : null;
+      if (eaten && (day === today || random() < PLAN_FOLLOW_CHANCE)) {
+        plans.push({ day, slot, meal: eaten, meal_id: eaten.meal_id });
+      } else {
+        // Planned something other than what was eaten (or nothing was eaten).
+        const options = MEAL_LIBRARY[slot].filter(([name]) => name !== eaten?.name);
+        const [name, calories, protein_g, carbs_g, fat_g] = pick(random, options);
+        plans.push({ day, slot, meal: { name, calories, protein_g, carbs_g, fat_g }, meal_id: null });
+      }
+    }
+  }
+
+  for (const { day, slot, meal, meal_id } of plans) {
+    await pool.query(`
+      INSERT INTO planned_meals (user_id, plan_date, slot, name, calories, protein_g, carbs_g, fat_g, meal_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `, [user.user_id, day, slot, meal.name, meal.calories, meal.protein_g, meal.carbs_g, meal.fat_g, meal_id]);
+  }
+  return plans.length;
+};
+
 const buildMealRows = (profile, user_id) => {
   const random = createRandom(profile.randomSeed);
   const rows = [];
@@ -136,14 +193,17 @@ const seed = async () => {
     column('fat_g'), column('user_id'), column('daysAgo'), column('localTime'),
   ]);
 
-  return { users, mealCount: rowCount };
+  const planCount = await seedPlans(users.find((user) => user.username === PLAN_USERNAME));
+
+  return { users, mealCount: rowCount, planCount };
 };
 
 seed()
-  .then(({ users, mealCount }) => {
+  .then(({ users, mealCount, planCount }) => {
     console.log('Database seeded successfully.');
     console.log(`  Users: ${users.map((u) => `${u.username} (${u.timezone})`).join(', ')}`);
     console.log(`  Meals: ${mealCount} across the last ${HISTORY_DAYS} days`);
+    console.log(`  Planned meals: ${planCount} for ${PLAN_USERNAME}, last week and this week`);
   })
   .catch((err) => {
     console.error('Error seeding database:', err);

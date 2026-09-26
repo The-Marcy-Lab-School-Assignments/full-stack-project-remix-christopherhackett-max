@@ -1,13 +1,7 @@
 const nutritionModel = require('../models/nutritionModel');
+const { isValidDate } = require('../utils/validation');
 
 const MAX_RANGE_DAYS = 366;
-
-// True for a real calendar date written as YYYY-MM-DD (rejects 2026-02-30).
-const isValidDate = (value) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
-};
 
 const daysBetween = (from, to) => (new Date(`${to}T00:00:00Z`) - new Date(`${from}T00:00:00Z`)) / 86400000;
 

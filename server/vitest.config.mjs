@@ -9,6 +9,8 @@ export default defineConfig({
     env: {
       PGDATABASE: 'nourish_test',
       PG_CONNECTION_STRING: '',
+      // Lets the tests run on a fresh clone with no .env file.
+      SESSION_SECRET: 'test-only-secret',
     },
     // All test files share one database.
     fileParallelism: false,

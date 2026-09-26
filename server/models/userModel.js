@@ -4,11 +4,6 @@ const pool = require('../db/pool');
 const SALT_ROUNDS = 8;
 const DEFAULT_TIMEZONE = 'America/New_York';
 
-// Databases seeded before timezones existed get the column on startup.
-module.exports.ensureTimezoneColumn = async () => {
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '${DEFAULT_TIMEZONE}'`);
-};
-
 // True when Postgres recognizes the name, e.g. 'America/Chicago'.
 module.exports.isValidTimezone = async (timezone) => {
   const { rows } = await pool.query('SELECT 1 FROM pg_timezone_names WHERE name = $1', [timezone]);

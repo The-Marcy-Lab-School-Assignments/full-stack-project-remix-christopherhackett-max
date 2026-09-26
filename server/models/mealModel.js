@@ -1,9 +1,5 @@
 const pool = require('../db/pool');
 
-module.exports.ensurePhotoColumn = async () => {
-  await pool.query('ALTER TABLE meals ADD COLUMN IF NOT EXISTS photo_data TEXT');
-};
-
 // Returns all meals for a specific user, ordered by most recently logged
 module.exports.listByUser = async (user_id) => {
   const query = `

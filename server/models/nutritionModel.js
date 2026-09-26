@@ -29,12 +29,11 @@ module.exports.dailyTotals = async (user_id, from, to) => {
         generate_series(from_day - ${ROLLING_WINDOW_DAYS - 1}, to_day, INTERVAL '1 day') AS gs
     ),
     meals_by_local_day AS (
-      -- logged_at is a UTC instant. Converting it to the user's timezone
-      -- before taking the date assigns late-night meals to the right day.
-      SELECT
-        (m.logged_at AT TIME ZONE b.timezone)::date AS day,
-        m.calories, m.protein_g, m.carbs_g, m.fat_g
-      FROM meals m
+      -- meals_local (see db/schema.js) converts each UTC logged_at to the
+      -- user's timezone before taking the date, so late-night meals land on
+      -- the right day.
+      SELECT m.local_day AS day, m.calories, m.protein_g, m.carbs_g, m.fat_g
+      FROM meals_local m
       CROSS JOIN bounds b
       WHERE m.user_id = $1
         -- Compare against UTC instants (not the converted date) so the
@@ -85,10 +84,9 @@ module.exports.dailyTotals = async (user_id, from, to) => {
 module.exports.streaks = async (user_id) => {
   const query = `
     WITH logged_days AS (
-      SELECT DISTINCT (m.logged_at AT TIME ZONE u.timezone)::date AS day
-      FROM meals m
-      JOIN users u USING (user_id)
-      WHERE m.user_id = $1
+      SELECT DISTINCT local_day AS day
+      FROM meals_local
+      WHERE user_id = $1
     ),
     islands AS (
       -- Gaps and islands: within a run of consecutive days, day and row number

@@ -48,12 +48,18 @@ function DailyReportPage({ currentUser }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Switching ranges quickly starts a new request before the old one
+    // returns. The cleanup marks the old one stale so a slow 7-day response
+    // can't overwrite the 30-day one that replaced it.
+    let isStale = false;
+
     const loadReport = async () => {
       setIsLoading(true);
       setError(null);
       const to = todayIn(currentUser.timezone);
       const from = shiftDay(to, -(rangeDays - 1));
       const [daily, streak] = await Promise.all([fetchDailyTotals(from, to), fetchStreaks()]);
+      if (isStale) return;
       if (daily.error || streak.error) {
         setError('Could not load your report.');
       } else {
@@ -64,6 +70,9 @@ function DailyReportPage({ currentUser }) {
     };
 
     loadReport();
+    return () => {
+      isStale = true;
+    };
   }, [rangeDays, currentUser.timezone]);
 
   const loggedDays = days.filter((day) => day.meal_count > 0);

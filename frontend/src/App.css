@@ -666,6 +666,328 @@ form button {
   font-weight: 800;
 }
 
+/* ====================================
+   Meal planner
+   ==================================== */
+
+.week-nav,
+.planner-summary,
+.plan-week,
+.plan-footnote {
+  position: relative;
+  z-index: 2;
+}
+
+.week-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.week-nav p {
+  display: grid;
+  margin: 0;
+  padding: 0.35rem 1rem;
+  background: #111;
+  color: #fff;
+  border: 3px solid #fff;
+  transform: skewX(-8deg);
+}
+
+.week-nav p .small-label {
+  margin: 0;
+  color: #ffe900;
+}
+
+.week-nav p strong {
+  font-size: 1.6rem;
+  text-transform: uppercase;
+}
+
+.week-nav button {
+  padding: 0.5rem 0.9rem;
+  border: 3px solid #111;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 #111;
+}
+
+.week-nav button:disabled {
+  cursor: default;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.week-nav .week-today {
+  background: #ffe900;
+}
+
+.planner-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(32rem, calc(100% - 2rem));
+}
+
+.plan-week {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.6rem;
+  margin-right: 2.5rem;
+}
+
+.plan-day {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: rgba(18, 18, 18, 0.94);
+  color: #fff;
+  border: 4px solid #fff;
+  box-shadow: 6px 6px 0 #111;
+}
+
+.plan-day-header {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 3px solid #fff;
+}
+
+.plan-date {
+  font-size: 2.6rem;
+  line-height: 1;
+  text-shadow: 3px 3px 0 #000;
+}
+
+.plan-weekday {
+  color: #ffe900;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.plan-day.sat .plan-weekday {
+  color: #0ba7e1;
+}
+
+.plan-day.sun .plan-weekday {
+  color: #ff4966;
+}
+
+.plan-day.past .plan-day-header {
+  opacity: 0.7;
+}
+
+.plan-day.today {
+  border-color: #ffe900;
+  box-shadow: 6px 6px 0 #111, 0 0 0 3px #111;
+}
+
+.plan-day.today .plan-day-header {
+  background: #ffe900;
+  color: #111;
+}
+
+.plan-day.today .plan-date {
+  text-shadow: 3px 3px 0 #fff;
+}
+
+.plan-day.today .plan-weekday {
+  color: #111;
+}
+
+.today-tag {
+  position: absolute;
+  right: -0.6rem;
+  top: -0.8rem;
+  padding: 0.1rem 0.5rem;
+  background: #ff284f;
+  color: #fff;
+  border: 2px solid #111;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  transform: rotate(8deg);
+}
+
+.plan-slots {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem;
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+}
+
+.plan-slot {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.35rem 0.45rem;
+  background: #232323;
+  border-left: 6px solid #ffe900;
+  font-family: Arial, sans-serif;
+  font-weight: 900;
+}
+
+.plan-slot-label {
+  color: #bcbcbc;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.plan-name {
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+}
+
+.plan-cal {
+  color: #ffe900;
+  font-size: 0.75rem;
+}
+
+.plan-slot.logged {
+  border-left-color: #0fb96d;
+}
+
+.plan-slot.missed {
+  border-left-color: #ff4966;
+}
+
+.plan-slot.missed .plan-name {
+  color: #9a9a9a;
+  text-decoration: line-through;
+}
+
+.plan-slot.empty {
+  background: transparent;
+  border: 2px dashed #555;
+}
+
+.plan-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.plan-add,
+.plan-log,
+.plan-delete {
+  border: 2px solid #fff;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-family: Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.plan-add {
+  justify-self: start;
+  padding: 0.15rem 0.5rem;
+}
+
+.plan-add:hover {
+  background: #ffe900;
+  border-color: #ffe900;
+  color: #111;
+}
+
+.plan-log {
+  padding: 0.15rem 0.5rem;
+  background: #ffe900;
+  border-color: #ffe900;
+  color: #111;
+}
+
+.plan-delete {
+  margin-left: auto;
+  padding: 0 0.4rem;
+  border-color: #555;
+  color: #bcbcbc;
+  font-size: 0.9rem;
+}
+
+.plan-delete:hover {
+  border-color: #ff4966;
+  color: #ff4966;
+}
+
+.plan-badge {
+  padding: 0.1rem 0.4rem;
+  background: #0fb96d;
+  color: #111;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.plan-day-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-top: 3px solid #fff;
+  font-family: Arial, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.plan-diff {
+  padding: 0 0.35rem;
+  background: #00a4df;
+  color: #111;
+}
+
+.plan-diff.over {
+  background: #ff8c00;
+}
+
+.plan-progress {
+  color: #bcbcbc;
+}
+
+.plan-footnote {
+  margin: 1rem 2.5rem 3rem 0;
+  font-size: 0.8rem;
+}
+
+.plan-form-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.plan-form {
+  width: min(30rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  transform: rotate(-1.5deg);
+}
+
+.plan-form .small-label {
+  color: #ffe900;
+}
+
+.plan-form .macro-grid label {
+  margin: 0;
+}
+
+@media (min-width: 1100px) {
+  .plan-week {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 720px) {
   .p4-screen {
     padding: 1rem;
@@ -743,6 +1065,29 @@ form button {
   .report-row .stat-track,
   .report-avg {
     grid-column: 1 / -1;
+  }
+
+  .week-nav {
+    justify-content: flex-start;
+    margin-right: 1.5rem;
+  }
+
+  .week-nav p {
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  .planner-summary {
+    width: calc(100% - 1rem);
+  }
+
+  .plan-week {
+    grid-template-columns: 1fr;
+    margin-right: 1.5rem;
+  }
+
+  .plan-footnote {
+    margin-right: 1.5rem;
   }
 
   .macro-grid,

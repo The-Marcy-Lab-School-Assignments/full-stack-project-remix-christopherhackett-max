@@ -41,7 +41,14 @@ Nourish is for anyone who wants a simple way to track meals and nutrition goals.
 - 7-day rolling calorie average that ignores days with nothing logged
 - Current and longest logging streaks
 
-See [DECISIONS.md](DECISIONS.md) for how the report is built and why.
+**Meal Planner**
+- Weekly Monday–Sunday calendar with breakfast, lunch, dinner, and snack slots
+- Plan a meal for any slot, move between weeks, and remove plans
+- "Log it" turns a plan into a logged meal and marks the plan as followed
+- Each day compares planned calories to what was actually eaten
+- Week scores: percent of plans followed and average calories over or under plan (finished days only)
+
+See [DECISIONS.md](DECISIONS.md) for how the report and planner are built and why.
 
 **Frontend Views**
 - Login/Register page
@@ -51,6 +58,7 @@ See [DECISIONS.md](DECISIONS.md) for how the report is built and why.
 - Meal Detail page
 - Account page
 - Daily Report page
+- Meal Planner page
 
 ---
 
@@ -91,9 +99,32 @@ fat_g       INTEGER NOT NULL DEFAULT 0
 photo_data  TEXT
 logged_at   TIMESTAMPTZ DEFAULT NOW()
 user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
+
+planned_meals
+─────────────────────────────
+planned_meal_id SERIAL PRIMARY KEY
+user_id    INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
+plan_date  DATE NOT NULL
+slot       TEXT NOT NULL  -- breakfast | lunch | dinner | snack
+name       TEXT NOT NULL
+calories   INTEGER NOT NULL
+protein_g  INTEGER NOT NULL DEFAULT 0
+carbs_g    INTEGER NOT NULL DEFAULT 0
+fat_g      INTEGER NOT NULL DEFAULT 0
+meal_id    INTEGER UNIQUE REFERENCES meals(meal_id) ON DELETE SET NULL
+UNIQUE (user_id, plan_date, slot)
+
+meals_local (view)
+─────────────────────────────
+every meals column, plus the user's timezone and
+local_day = (logged_at AT TIME ZONE timezone)::date
 ```
 
 A user has many meals. Deleting a user cascades to delete all of that user's meal entries. `timezone` is an IANA name such as `America/Los_Angeles`, captured from the browser at registration. It decides which calendar day each meal belongs to. An index on `meals (user_id, logged_at)` supports the report queries.
+
+A user has many planned meals, at most one per slot per day. `meal_id` links a plan to the meal logged from it; deleting that meal clears the link. The `meals_local` view is the single definition of which local day a meal belongs to, shared by the report and the planner.
+
+The server creates any missing tables, columns, indexes, and views on startup (`ensureSchema` in `server/db/schema.js`), so an existing database is upgraded without reseeding.
 
 ---
 
@@ -130,6 +161,19 @@ Both require authentication.
 | GET    | `/api/nutrition/daily`   | `from`, `to` as `YYYY-MM-DD` (optional, send both or neither; max 366 days; defaults to the last 14 days) | `[{ day, meal_count, calories, protein_g, carbs_g, fat_g, calories_7d_avg, days_logged_7d }]`, one entry per day |
 | GET    | `/api/nutrition/streaks` | —                                       | `{ current_streak, longest_streak }` |
 
+### Meal Plan Endpoints
+
+All require authentication.
+
+| Method | Endpoint                           | Request                                                   | Response |
+| ------ | ---------------------------------- | --------------------------------------------------------- | -------- |
+| GET    | `/api/plans?week=YYYY-MM-DD`       | `week` is any date in the week (optional, defaults to this week) | `{ week_start, days: [{ day, is_past, is_today, planned_count, planned_calories, followed_count, actual_meals, actual_calories, calorie_diff, plans: [...] }], summary: { planned_meals, followed_meals, follow_rate, avg_calorie_diff } }` |
+| POST   | `/api/plans`                       | `{ plan_date, slot, name, calories, protein_g, carbs_g, fat_g }` | The new plan. `409` if that slot is already planned |
+| DELETE | `/api/plans/:planned_meal_id`      | —                                                         | The deleted plan |
+| POST   | `/api/plans/:planned_meal_id/log`  | —                                                         | `{ plan, meal }`. `409` if already logged, `400` for a future day |
+
+Numbers must be whole numbers (calories 0–10,000, macros 0–1,000 g). Invalid input gets a `400` with an `error` message.
+
 ---
 
 ## Setup
@@ -156,7 +200,7 @@ Open `.env` and fill in your Postgres credentials and a session secret. Then see
 npm run db:seed
 ```
 
-The seed creates two users with 60 days of meal history ending today, including skipped days and late-night meals. It is deterministic, so every run produces the same meals.
+The seed creates two users with 60 days of meal history ending today, including skipped days and late-night meals, plus a meal plan for `yu` covering last week and this week. It is deterministic, so every run produces the same meals.
 
 Start the server:
 
@@ -212,7 +256,8 @@ nourish/
 │   │   ├── adapters/
 │   │   │   ├── auth-adapters.js  # Fetch adapters for /api/auth/* endpoints
 │   │   │   ├── meal-adapters.js  # Fetch adapters for /api/meals/* endpoints
-│   │   │   └── nutrition-adapters.js # Fetch adapters for /api/nutrition/* endpoints
+│   │   │   ├── nutrition-adapters.js # Fetch adapters for /api/nutrition/* endpoints
+│   │   │   └── plan-adapters.js  # Fetch adapters for /api/plans/* endpoints
 │   │   └── components/
 │   │       ├── AuthPage.jsx      # Login and register forms
 │   │       ├── MenuPage.jsx      # Main menu after login
@@ -224,27 +269,37 @@ nourish/
 │   │       ├── MealItem.jsx      # Clickable meal row and delete button
 │   │       ├── MealDetailPage.jsx # Single meal macro view
 │   │       ├── DailyReportPage.jsx # Daily totals, rolling average, streaks
+│   │       ├── PlannerPage.jsx   # Weekly meal-plan calendar
+│   │       ├── PlanForm.jsx      # Form for planning one meal
 │   │       └── MealPage.jsx      # Compatibility wrapper for meal list page
 │   └── vite.config.js            # Proxies /api requests to Express in development
 └── server/                       # Express + Postgres API
-    ├── index.js                  # App entry point and route definitions
+    ├── index.js                  # Prepares the schema, then starts the server
+    ├── app.js                    # Express app: middleware and routes
     ├── controllers/
     │   ├── authControllers.js    # register, login, logout, get/update/delete account
     │   ├── mealControllers.js    # list, create, get, delete meals
-    │   └── nutritionControllers.js # daily report and streaks, with query validation
+    │   ├── nutritionControllers.js # daily report and streaks, with query validation
+    │   └── planControllers.js    # meal plan week, create, delete, log
     ├── models/
     │   ├── userModel.js          # SQL queries for users
     │   ├── mealModel.js          # SQL queries for meals
-    │   └── nutritionModel.js     # Daily totals, rolling average, and streak SQL
+    │   ├── nutritionModel.js     # Daily totals, rolling average, and streak SQL
+    │   └── planModel.js          # Week view, planned vs actual, logging a plan
     ├── middleware/
     │   ├── checkAuthentication.js
     │   └── logRoutes.js
     ├── db/
     │   ├── pool.js
-    │   ├── schema.js             # Table definitions shared by seed and tests
+    │   ├── schema.js             # Tables and views; ensureSchema runs on startup
     │   └── seed.js               # 60 days of generated meal history
+    ├── utils/
+    │   └── validation.js         # Shared input checks
     └── tests/
-        └── nutritionModel.test.js
+        ├── helpers.js            # Fixture helpers
+        ├── nutritionModel.test.js
+        ├── planModel.test.js
+        └── api.test.js           # HTTP checks: auth, validation, ownership
 ```
 
 ---
@@ -254,5 +309,5 @@ nourish/
 - Edit existing meal entries
 - Let users change their timezone on the Account page
 - Add goal tracking for calories, protein, carbs, and fat
-- Add a weekly meal-plan calendar with planned-vs-actual comparison
+- Copy last week's meal plan into this week
 - Add nutrition search or food API integration
