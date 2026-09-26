@@ -112,8 +112,8 @@ protein_g   INTEGER NOT NULL DEFAULT 0
 carbs_g     INTEGER NOT NULL DEFAULT 0
 fat_g       INTEGER NOT NULL DEFAULT 0
 photo_data  TEXT
-logged_at   TIMESTAMPTZ DEFAULT NOW()
-user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
+logged_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+user_id     INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
 
 planned_meals
 ─────────────────────────────
@@ -179,7 +179,7 @@ All require authentication.
 | GET    | `/api/meals`          | —                   | `[{ meal_id, saved_meal_id, name, calories, protein_g, carbs_g, fat_g, logged_at, user_id }]`, newest first |
 | POST   | `/api/meals`          | `{ saved_meal_id }` | Logs that saved meal as eaten now. `404` if it isn't one of yours |
 | GET    | `/api/meals/:meal_id` | —                   | One eaten meal |
-| DELETE | `/api/meals/:meal_id` | —                   | The deleted meal |
+| DELETE | `/api/meals/:meal_id` | —                   | The deleted meal. `404` if it isn't yours |
 
 ### Nutrition Report Endpoints
 

@@ -4,6 +4,52 @@
 const DEFAULT_TIMEZONE = 'America/New_York';
 const MEAL_TYPES = "('breakfast', 'lunch', 'dinner', 'snack')";
 
+// Postgres error codes for rows that break a NOT NULL or CHECK rule.
+const NOT_NULL_VIOLATION = '23502';
+const CHECK_VIOLATION = '23514';
+
+// Rules on eaten meals. The names match what Postgres gives the inline CHECKs
+// in CREATE TABLE meals, so existing and new databases end up the same.
+const MEAL_CHECKS = {
+  meals_calories_check: 'calories >= 0',
+  meals_protein_g_check: 'protein_g >= 0',
+  meals_carbs_g_check: 'carbs_g >= 0',
+  meals_fat_g_check: 'fat_g >= 0',
+};
+
+// Older versions of the app created meals without NOT NULL on user_id and
+// logged_at and without CHECKs. A meal with no logged_at has no local_day and
+// silently drops out of every report, so the database should refuse one.
+//
+// Adding a rule fails if an existing row already breaks it, and a bad old row
+// shouldn't stop the server from starting. So each CHECK is added NOT VALID
+// (enforced for new rows only) and then validated against old rows separately.
+// Any rule old rows break is logged instead of failing startup.
+const tightenMealsTable = async (pool) => {
+  for (const column of ['user_id', 'logged_at']) {
+    try {
+      await pool.query(`ALTER TABLE meals ALTER COLUMN ${column} SET NOT NULL`);
+    } catch (err) {
+      if (err.code !== NOT_NULL_VIOLATION) throw err;
+      console.warn(`Some meals have no ${column}, so it can't be made required yet. Fix those rows and restart.`);
+    }
+  }
+  for (const [name, rule] of Object.entries(MEAL_CHECKS)) {
+    const { rows } = await pool.query(
+      "SELECT 1 FROM pg_constraint WHERE conname = $1 AND conrelid = 'meals'::regclass",
+      [name],
+    );
+    if (rows.length === 0) await pool.query(`ALTER TABLE meals ADD CONSTRAINT ${name} CHECK (${rule}) NOT VALID`);
+    try {
+      // Does nothing when the rule is already validated.
+      await pool.query(`ALTER TABLE meals VALIDATE CONSTRAINT ${name}`);
+    } catch (err) {
+      if (err.code !== CHECK_VIOLATION) throw err;
+      console.warn(`Some existing meals break "${rule}". New meals must follow it; fix the old rows and restart.`);
+    }
+  }
+};
+
 // Adds a column that links existing rows to saved_meals, and fills in those
 // links, the first time only. Runs in a transaction so a failure part way
 // can't leave the column added but the rows unlinked.
@@ -83,13 +129,13 @@ module.exports.ensureSchema = async (pool) => {
     CREATE TABLE IF NOT EXISTS meals (
       meal_id     SERIAL PRIMARY KEY,
       name        TEXT NOT NULL,
-      calories    INTEGER NOT NULL,
-      protein_g   INTEGER NOT NULL DEFAULT 0,
-      carbs_g     INTEGER NOT NULL DEFAULT 0,
-      fat_g       INTEGER NOT NULL DEFAULT 0,
+      calories    INTEGER NOT NULL CHECK (calories >= 0),
+      protein_g   INTEGER NOT NULL DEFAULT 0 CHECK (protein_g >= 0),
+      carbs_g     INTEGER NOT NULL DEFAULT 0 CHECK (carbs_g >= 0),
+      fat_g       INTEGER NOT NULL DEFAULT 0 CHECK (fat_g >= 0),
       photo_data  TEXT,
-      logged_at   TIMESTAMPTZ DEFAULT NOW(),
-      user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
+      logged_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      user_id     INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE
     )
   `);
 
@@ -97,6 +143,7 @@ module.exports.ensureSchema = async (pool) => {
   // them here.
   await pool.query('ALTER TABLE meals ADD COLUMN IF NOT EXISTS photo_data TEXT');
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT '${DEFAULT_TIMEZONE}'`);
+  await tightenMealsTable(pool);
 
   // Every report query filters meals by user and time range.
   await pool.query('CREATE INDEX IF NOT EXISTS meals_user_logged_at_idx ON meals (user_id, logged_at)');
@@ -141,7 +188,9 @@ module.exports.ensureSchema = async (pool) => {
   });
   await addSavedMealLink(pool, 'meals', async (client) => {
     // Eaten meals have no slot, so the type is guessed from the local time of
-    // the most recent time each meal was eaten.
+    // the most recent time each meal was eaten. Old rows with negative numbers
+    // are skipped: saved_meals refuses them, and one bad row would otherwise
+    // stop the server from starting. Those meals stay in history, unlinked.
     await client.query(`
       INSERT INTO saved_meals (user_id, name, meal_type, calories, protein_g, carbs_g, fat_g, photo_data)
       SELECT DISTINCT ON (m.user_id, lower(m.name))
@@ -157,6 +206,7 @@ module.exports.ensureSchema = async (pool) => {
         SELECT m.*, EXTRACT(HOUR FROM m.logged_at AT TIME ZONE u.timezone) AS local_hour
         FROM meals m
         JOIN users u USING (user_id)
+        WHERE m.calories >= 0 AND m.protein_g >= 0 AND m.carbs_g >= 0 AND m.fat_g >= 0
       ) m
       ORDER BY m.user_id, lower(m.name), m.logged_at DESC
       ON CONFLICT (user_id, lower(name)) DO NOTHING
