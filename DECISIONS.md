@@ -341,3 +341,7 @@ sessions, and timing. Each fix now has a test that fails without it.
   `effective_to` dates, and each past day should be judged against the goal
   that was active that day.
 - Copy last week's plan into this week.
+- Edit saved meals. Eaten meals and plans keep their own copies, so editing is
+  safe for history. The open question is whether future plans should pick up
+  the change.
+- Page through History instead of returning every meal ever eaten.

@@ -25,7 +25,7 @@ Nourish is for anyone who wants a simple way to track meals and nutrition goals.
 - Update username
 - Optionally update password
 - Delete the account
-- Delete related meals automatically when an account is deleted
+- Delete the account's saved meals, eaten meals, and plans automatically when it is deleted
 
 **My Meals**
 - Save meals to your collection with a type (breakfast, lunch, dinner, or snack), calories, macros, and an optional photo
@@ -342,7 +342,8 @@ nourish/
 
 ## Roadmap
 
-- Edit existing meal entries
+- Edit saved meals
+- Page through History instead of loading every meal at once
 - Let users change their timezone on the Account page
 - Add goal tracking for calories, protein, carbs, and fat
 - Copy last week's meal plan into this week
