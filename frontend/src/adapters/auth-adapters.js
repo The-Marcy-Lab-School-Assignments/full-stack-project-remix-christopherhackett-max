@@ -16,11 +16,14 @@ export const getMe = async () => {
   return handleFetch('/api/auth/me');
 };
 
+// Sends the browser's timezone so the server knows which calendar day
+// each meal belongs to.
 export const register = async (username, password) => {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return handleFetch('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, timezone }),
   });
 };
 

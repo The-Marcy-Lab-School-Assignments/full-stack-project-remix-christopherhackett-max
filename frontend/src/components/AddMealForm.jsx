@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { createMeal } from '../adapters/meal-adapters';
+import { createSavedMeal } from '../adapters/saved-meal-adapters';
+import { MEAL_TYPES } from '../mealTypes';
 
-function AddMealForm({ onMealAdded }) {
+// Saves a meal to My Meals. It does not log it as eaten.
+function AddMealForm({ defaultType, onMealAdded }) {
   const [errorMessage, setErrorMessage] = useState(null);
   const [photoData, setPhotoData] = useState(null);
 
@@ -41,9 +43,17 @@ function AddMealForm({ onMealAdded }) {
       return;
     }
 
-    const { error } = await createMeal(name, calories, protein, carbs, fat, photoData);
+    const { error } = await createSavedMeal({
+      name,
+      meal_type: form.elements.meal_type.value,
+      calories,
+      protein_g: protein,
+      carbs_g: carbs,
+      fat_g: fat,
+      photo_data: photoData,
+    });
     if (error) {
-      setErrorMessage('Could not add this meal.');
+      setErrorMessage(error.message);
       return;
     }
 
@@ -54,6 +64,13 @@ function AddMealForm({ onMealAdded }) {
     <form className="meal-form" onSubmit={handleSubmit}>
       <label htmlFor="name-input">Meal Name</label>
       <input type="text" name="name" id="name-input" placeholder="Grilled chicken bowl" required />
+
+      <label htmlFor="type-input">Meal Type</label>
+      <select name="meal_type" id="type-input" defaultValue={defaultType}>
+        {MEAL_TYPES.map((type) => (
+          <option key={type} value={type}>{type[0].toUpperCase() + type.slice(1)}</option>
+        ))}
+      </select>
 
       <label htmlFor="calories-input">Calories</label>
       <input type="number" name="calories" id="calories-input" min="0" placeholder="520" required />
@@ -90,7 +107,7 @@ function AddMealForm({ onMealAdded }) {
       </div>
 
       {errorMessage && <p className="error">{errorMessage}</p>}
-      <button type="submit">Add Meal</button>
+      <button type="submit">Save Meal</button>
     </form>
   );
 }

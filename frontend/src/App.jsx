@@ -7,6 +7,8 @@ import MealListPage from './components/MealListPage';
 import MealDetailPage from './components/MealDetailPage';
 import AddMealPage from './components/AddMealPage';
 import AccountPage from './components/AccountPage';
+import DailyReportPage from './components/DailyReportPage';
+import PlannerPage from './components/PlannerPage';
 import './App.css';
 
 function App() {
@@ -75,7 +77,7 @@ function App() {
             : <Navigate to="/" replace />}
         />
         <Route
-          path="/meals/:meal_id"
+          path="/meals/:saved_meal_id"
           element={currentUser
             ? <MealDetailPage />
             : <Navigate to="/" replace />}
@@ -84,6 +86,18 @@ function App() {
           path="/meals/add"
           element={currentUser
             ? <AddMealPage currentUser={currentUser} />
+            : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/report"
+          element={currentUser
+            ? <DailyReportPage currentUser={currentUser} />
+            : <Navigate to="/" replace />}
+        />
+        <Route
+          path="/plan"
+          element={currentUser
+            ? <PlannerPage />
             : <Navigate to="/" replace />}
         />
         <Route
