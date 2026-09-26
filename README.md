@@ -302,8 +302,7 @@ nourish/
 │   │       ├── MealDetailPage.jsx # One saved meal: macros and eating stats
 │   │       ├── DailyReportPage.jsx # Daily totals, rolling average, streaks
 │   │       ├── PlannerPage.jsx   # Weekly meal-plan calendar
-│   │       ├── MealPicker.jsx    # Pick a saved meal for a planner slot
-│   │       └── MealPage.jsx      # Compatibility wrapper for meal list page
+│   │       └── MealPicker.jsx    # Pick a saved meal for a planner slot
 │   └── vite.config.js            # Proxies /api requests to Express in development
 └── server/                       # Express + Postgres API
     ├── index.js                  # Prepares the schema, then starts the server
