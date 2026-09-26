@@ -35,9 +35,11 @@ The fix is a `timezone` column on `users` (an IANA name such as
 timezone at registration, and the server checks it against
 `pg_timezone_names`.
 
-How much it matters in the seed data: chie (Los Angeles) logged meals on
-**48** local days. Grouping by UTC date reports **57**, because her dinners
-spill into the next UTC day and make it look like a logged day.
+How much it matters in the seed data: when seeded on Sep 25, 2026, chie (Los
+Angeles) logged meals on **48** local days, but grouping by UTC date reported
+**57**, because her dinners spill into the next UTC day and look like logged
+days. The seed builds history relative to the day it runs, so the exact counts
+shift by a day or so on each reseed.
 
 Considered and rejected:
 - **Group by the server's timezone.** Correct only for users who live where
