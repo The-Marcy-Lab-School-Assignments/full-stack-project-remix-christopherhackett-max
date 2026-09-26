@@ -214,6 +214,7 @@ Deleting or logging someone else's plan returns 404, the same as a plan that
 doesn't exist. A 403 would confirm the id belongs to somebody, which lets
 anyone probe which ids exist. The query filters on both `planned_meal_id` and
 `user_id`, so ownership is checked in the same statement that does the work.
+Saved meals and eaten meals follow the same rule.
 
 ## How it's tested
 
@@ -245,8 +246,8 @@ The fix splits those two jobs into separate tables:
   each time something was planned. These are **facts**: they record events,
   and they point at the dimension with `saved_meal_id`.
 
-This is the same split the job's dbt work is built on (fact tables and
-dimension tables, with metrics defined on top).
+This is the same fact/dimension split used in dbt-style analytics modeling,
+where metrics are defined on top of fact and dimension tables.
 
 ## 17. Facts keep their own copy of the numbers
 
@@ -272,10 +273,9 @@ can both save "Oatmeal". As with plans, duplicates are caught by the database
 
 ## 19. Adding a meal doesn't log it
 
-Saving a meal to My Meals and eating it are different events, so they're
-different actions. You can save a meal you plan to eat later, and "Log it"
-records it when you do. (This was the user's call: "I can add a meal into my
-list but that doesn't necessarily mean I ate it just now.")
+I decided saving a meal and eating it should be separate actions, because
+they're different events. Adding a meal to My Meals doesn't mean I ate it just
+now: I can save a meal I plan to eat later, and "Log it" records it when I do.
 
 ## 20. Upgrading an existing database, once
 
@@ -332,6 +332,32 @@ sessions, and timing. Each fix now has a test that fails without it.
    requests. If the 7-day response arrived second, it overwrote the 30-day one.
    Fix: each page ignores responses from requests that have since been
    replaced.
+
+# Found in a second review
+
+A second review, after saved meals, found three more things:
+
+1. **Meal deletion didn't follow the ownership rule.** It looked the meal up,
+   compared owners in JavaScript, answered 403 for someone else's meal, then
+   deleted by `meal_id` alone. Now it's one statement,
+   `DELETE ... WHERE meal_id = $1 AND user_id = $2`, answering 404 like every
+   other resource.
+2. **`meals` had weaker rules than the other tables.** `user_id` and
+   `logged_at` could be NULL, and nothing stopped negative calories. A meal
+   with no `logged_at` gets no `local_day` and silently drops out of every
+   report. The API prevented this, but the database should guarantee it too.
+   New databases get `NOT NULL` and `CHECK` rules in `CREATE TABLE`. Existing
+   databases get each `CHECK` added `NOT VALID` (enforced for new rows only),
+   then validated against old rows separately, so one bad old row logs a
+   warning instead of stopping the server from starting.
+3. **Two lines in this document were written in the wrong voice.** They're
+   rewritten.
+
+Writing the test for point 2 turned up an older bug. Upgrading a database
+that had any meal with negative calories crashed on startup, because the
+saved-meal backfill copied that meal into `saved_meals`, which refuses
+negative numbers. The backfill now skips those rows; they stay in history,
+unlinked.
 
 # What I'd do next
 

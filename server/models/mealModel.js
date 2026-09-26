@@ -13,13 +13,6 @@ module.exports.listByUser = async (user_id) => {
   return rows;
 };
 
-// Returns a single meal row (used for ownership checks before delete)
-module.exports.find = async (meal_id) => {
-  const query = 'SELECT * FROM meals WHERE meal_id = $1';
-  const { rows } = await pool.query(query, [meal_id]);
-  return rows[0] || null;
-};
-
 // Returns one meal only when it belongs to the current user.
 module.exports.findByUser = async (meal_id, user_id) => {
   const query = 'SELECT * FROM meals WHERE meal_id = $1 AND user_id = $2';
@@ -43,9 +36,11 @@ module.exports.logSavedMeal = async (saved_meal_id, user_id) => {
   return rows[0] || null;
 };
 
-// Deletes a meal by id. Returns the deleted row.
-module.exports.destroy = async (meal_id) => {
-  const query = 'DELETE FROM meals WHERE meal_id = $1 RETURNING *';
-  const { rows } = await pool.query(query, [meal_id]);
+// Deletes a meal the user owns. Returns the deleted row, or null when it
+// doesn't exist or belongs to someone else. Ownership is checked in the same
+// statement that deletes, so there's no gap between checking and deleting.
+module.exports.destroy = async (meal_id, user_id) => {
+  const query = 'DELETE FROM meals WHERE meal_id = $1 AND user_id = $2 RETURNING *';
+  const { rows } = await pool.query(query, [meal_id, user_id]);
   return rows[0] || null;
 };

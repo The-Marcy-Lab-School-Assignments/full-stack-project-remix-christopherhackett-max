@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import pool from '../db/pool';
 import { createSchema, ensureSchema } from '../db/schema';
 
@@ -97,6 +97,45 @@ describe('ensureSchema', () => {
 
     const { rows } = await pool.query('SELECT COUNT(*)::int AS count FROM saved_meals');
     expect(rows[0].count).toBe(0);
+  });
+
+  it('refuses eaten meals with no user, no time, or negative numbers', async () => {
+    await createSchema(pool);
+    await pool.query("INSERT INTO users (username, password_hash) VALUES ('yu', 'x')");
+    const insert = (sql) => pool.query(sql).then(() => 'accepted', (err) => err.code);
+
+    expect(await insert("INSERT INTO meals (name, calories, user_id, logged_at) VALUES ('Toast', 200, 1, NULL)")).toBe('23502');
+    expect(await insert("INSERT INTO meals (name, calories) VALUES ('Toast', 200)")).toBe('23502');
+    expect(await insert("INSERT INTO meals (name, calories, user_id) VALUES ('Toast', -5, 1)")).toBe('23514');
+    expect(await insert("INSERT INTO meals (name, calories, fat_g, user_id) VALUES ('Toast', 200, -1, 1)")).toBe('23514');
+  });
+
+  it('adds the meals rules to an old database', async () => {
+    await createOriginalSchema();
+    await pool.query("INSERT INTO meals (name, calories, user_id) VALUES ('Toast', 200, 1)");
+
+    await ensureSchema(pool);
+
+    const { rows } = await pool.query(`
+      SELECT
+        (SELECT bool_and(convalidated) FROM pg_constraint WHERE conrelid = 'meals'::regclass AND contype = 'c') AS checks_valid,
+        (SELECT bool_and(is_nullable = 'NO') FROM information_schema.columns
+          WHERE table_name = 'meals' AND column_name IN ('user_id', 'logged_at')) AS required
+    `);
+    expect(rows[0]).toEqual({ checks_valid: true, required: true });
+  });
+
+  it('still starts when old rows break the new rules, and enforces them on new rows', async () => {
+    await createOriginalSchema();
+    await pool.query("INSERT INTO meals (name, calories, user_id, logged_at) VALUES ('Broken', -5, 1, NULL)");
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await ensureSchema(pool);
+
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+    const insert = pool.query("INSERT INTO meals (name, calories, user_id) VALUES ('Toast', -1, 1)").then(() => 'accepted', (err) => err.code);
+    expect(await insert).toBe('23514');
   });
 
   it('can run again on an up-to-date database', async () => {

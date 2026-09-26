@@ -44,15 +44,10 @@ module.exports.deleteMeal = async (req, res, next) => {
     const { meal_id } = req.params;
     if (!isValidId(meal_id)) return res.status(404).send({ error: 'Meal not found.' });
 
-    // First find the meal to verify ownership
-    const meal = await mealModel.find(meal_id);
-    if (!meal) return res.status(404).send({ error: 'Meal not found.' });
-    if (meal.user_id !== req.session.user_id) {
-      return res.status(403).send({ error: 'Not authorized.' });
-    }
-
-    // Destroy the meal only after ownership has been verified
-    const deletedMeal = await mealModel.destroy(meal_id);
+    // Someone else's meal gets the same 404 as a missing one, so ids can't be
+    // probed to find out which meals exist.
+    const deletedMeal = await mealModel.destroy(meal_id, req.session.user_id);
+    if (!deletedMeal) return res.status(404).send({ error: 'Meal not found.' });
     res.send(deletedMeal);
   } catch (err) {
     next(err);

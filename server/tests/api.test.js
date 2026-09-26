@@ -168,6 +168,19 @@ describe('logging meals', () => {
     expect(eaten).toEqual([expect.objectContaining({ name: 'Chicken salad', calories: 450, saved_meal_id: null })]);
   });
 
+  it("hides other users' eaten meals behind a 404 and doesn't delete them", async () => {
+    const yu = await signUp('yu');
+    const chie = await signUp('chie');
+    const saladId = await saveMeal(chie);
+    const { body: meal } = await chie.post('/api/meals').send({ saved_meal_id: saladId }).expect(201);
+
+    await yu.get(`/api/meals/${meal.meal_id}`).expect(404);
+    await yu.delete(`/api/meals/${meal.meal_id}`).expect(404);
+
+    const { body: chiesMeals } = await chie.get('/api/meals').expect(200);
+    expect(chiesMeals).toHaveLength(1);
+  });
+
   it('answers 404 for a non-numeric meal id instead of a database error', async () => {
     const agent = await signUp('yu');
     await agent.get('/api/meals/abc').expect(404);
