@@ -14,6 +14,7 @@ function MenuPage({ currentUser, handleLogout }) {
         <nav className="side-menu" aria-label="Main menu">
           <Link to="/meals">View Meals</Link>
           <Link to="/meals/add">Add Meal</Link>
+          <Link to="/report">Daily Report</Link>
           <Link to="/account">Account</Link>
           <button type="button" onClick={handleLogout} className="menu-button danger">
             Log Out

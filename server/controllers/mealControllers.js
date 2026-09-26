@@ -1,7 +1,9 @@
 const mealModel = require('../models/mealModel');
+const userModel = require('../models/userModel');
 
 module.exports.ensureSchema = async () => {
   await mealModel.ensurePhotoColumn();
+  await userModel.ensureTimezoneColumn();
 };
 
 module.exports.listMeals = async (req, res, next) => {

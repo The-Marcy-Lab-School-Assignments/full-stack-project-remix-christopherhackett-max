@@ -8,9 +8,12 @@ const clearSessionCookies = (req, res) => {
 
 module.exports.register = async (req, res, next) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, timezone } = req.body;
     if (!username || !password) {
       return res.status(400).send({ error: 'Username and password are required.' });
+    }
+    if (timezone !== undefined && !(await userModel.isValidTimezone(timezone))) {
+      return res.status(400).send({ error: 'Unknown timezone.' });
     }
 
     const existingUser = await userModel.findByUsername(username);
@@ -18,7 +21,7 @@ module.exports.register = async (req, res, next) => {
       return res.status(400).send({ error: 'Username already taken.' });
     }
 
-    const user = await userModel.create(username, password);
+    const user = await userModel.create(username, password, timezone);
     req.session.user_id = user.user_id;
     res.status(201).send(user);
   } catch (err) {

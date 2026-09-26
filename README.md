@@ -34,6 +34,15 @@ Nourish is for anyone who wants a simple way to track meals and nutrition goals.
 - Delete a meal
 - Open a meal detail page with a macro breakdown
 
+**Daily Report**
+- Daily calorie and macro totals for the last 7, 14, or 30 days
+- Days are grouped in the user's own timezone, so late-night meals land on the right day
+- Days with nothing logged are shown instead of skipped
+- 7-day rolling calorie average that ignores days with nothing logged
+- Current and longest logging streaks
+
+See [DECISIONS.md](DECISIONS.md) for how the report is built and why.
+
 **Frontend Views**
 - Login/Register page
 - Main Menu page
@@ -41,6 +50,7 @@ Nourish is for anyone who wants a simple way to track meals and nutrition goals.
 - Add Meal page
 - Meal Detail page
 - Account page
+- Daily Report page
 
 ---
 
@@ -68,6 +78,7 @@ users
 user_id       SERIAL PRIMARY KEY
 username      TEXT UNIQUE NOT NULL
 password_hash TEXT NOT NULL
+timezone      TEXT NOT NULL DEFAULT 'America/New_York'
 
 meals
 ─────────────────────────────
@@ -82,7 +93,7 @@ logged_at   TIMESTAMPTZ DEFAULT NOW()
 user_id     INTEGER REFERENCES users(user_id) ON DELETE CASCADE
 ```
 
-A user has many meals. Deleting a user cascades to delete all of that user's meal entries.
+A user has many meals. Deleting a user cascades to delete all of that user's meal entries. `timezone` is an IANA name such as `America/Los_Angeles`, captured from the browser at registration. It decides which calendar day each meal belongs to. An index on `meals (user_id, logged_at)` supports the report queries.
 
 ---
 
@@ -92,10 +103,10 @@ A user has many meals. Deleting a user cascades to delete all of that user's mea
 
 | Method | Endpoint             | Request Body             | Response                          |
 | ------ | -------------------- | ------------------------ | --------------------------------- |
-| POST   | `/api/auth/register` | `{ username, password }` | `{ user_id, username }`           |
-| POST   | `/api/auth/login`    | `{ username, password }` | `{ user_id, username }`           |
-| GET    | `/api/auth/me`       | —                        | `{ user_id, username }` or `null` |
-| PATCH  | `/api/auth/me`       | `{ username, password }` | `{ user_id, username }`           |
+| POST   | `/api/auth/register` | `{ username, password, timezone? }` | `{ user_id, username, timezone }` |
+| POST   | `/api/auth/login`    | `{ username, password }` | `{ user_id, username, timezone }` |
+| GET    | `/api/auth/me`       | —                        | `{ user_id, username, timezone }` or `null` |
+| PATCH  | `/api/auth/me`       | `{ username, password }` | `{ user_id, username, timezone }` |
 | DELETE | `/api/auth/me`       | —                        | `{ user_id, username }`           |
 | DELETE | `/api/auth/logout`   | —                        | `{ message }`                     |
 
@@ -109,6 +120,15 @@ All meal endpoints require authentication.
 | POST   | `/api/meals`          | `{ name, calories, protein_g, carbs_g, fat_g, photo_data }` | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, photo_data, logged_at, user_id }` |
 | GET    | `/api/meals/:meal_id` | —                                                           | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, photo_data, logged_at, user_id }` |
 | DELETE | `/api/meals/:meal_id` | —                                                           | `{ meal_id, name, calories, protein_g, carbs_g, fat_g, photo_data, logged_at, user_id }` |
+
+### Nutrition Report Endpoints
+
+Both require authentication.
+
+| Method | Endpoint                 | Query                                   | Response |
+| ------ | ------------------------ | --------------------------------------- | -------- |
+| GET    | `/api/nutrition/daily`   | `from`, `to` as `YYYY-MM-DD` (optional, send both or neither; max 366 days; defaults to the last 14 days) | `[{ day, meal_count, calories, protein_g, carbs_g, fat_g, calories_7d_avg, days_logged_7d }]`, one entry per day |
+| GET    | `/api/nutrition/streaks` | —                                       | `{ current_streak, longest_streak }` |
 
 ---
 
@@ -136,6 +156,8 @@ Open `.env` and fill in your Postgres credentials and a session secret. Then see
 npm run db:seed
 ```
 
+The seed creates two users with 60 days of meal history ending today, including skipped days and late-night meals. It is deterministic, so every run produces the same meals.
+
 Start the server:
 
 ```sh
@@ -156,16 +178,26 @@ npm run dev
 
 The frontend runs on `http://localhost:5173`. The Vite dev proxy forwards `/api` requests to the Express server so session cookies work correctly.
 
+### 4. Tests
+
+The server tests run against a separate database, which they drop and rebuild on every run:
+
+```sh
+createdb nourish_test
+cd server
+npm test
+```
+
 ---
 
 ## Seed Users
 
 After running `npm run db:seed`, these accounts are available:
 
-| Username | Password    |
-| -------- | ----------- |
-| yu       | password123 |
-| chie     | password123 |
+| Username | Password    | Timezone            |
+| -------- | ----------- | ------------------- |
+| yu       | password123 | America/New_York    |
+| chie     | password123 | America/Los_Angeles |
 
 ---
 
@@ -179,7 +211,8 @@ nourish/
 │   │   ├── App.css               # Persona-inspired visual system
 │   │   ├── adapters/
 │   │   │   ├── auth-adapters.js  # Fetch adapters for /api/auth/* endpoints
-│   │   │   └── meal-adapters.js  # Fetch adapters for /api/meals/* endpoints
+│   │   │   ├── meal-adapters.js  # Fetch adapters for /api/meals/* endpoints
+│   │   │   └── nutrition-adapters.js # Fetch adapters for /api/nutrition/* endpoints
 │   │   └── components/
 │   │       ├── AuthPage.jsx      # Login and register forms
 │   │       ├── MenuPage.jsx      # Main menu after login
@@ -190,22 +223,28 @@ nourish/
 │   │       ├── MealList.jsx      # Renders meal rows
 │   │       ├── MealItem.jsx      # Clickable meal row and delete button
 │   │       ├── MealDetailPage.jsx # Single meal macro view
+│   │       ├── DailyReportPage.jsx # Daily totals, rolling average, streaks
 │   │       └── MealPage.jsx      # Compatibility wrapper for meal list page
 │   └── vite.config.js            # Proxies /api requests to Express in development
 └── server/                       # Express + Postgres API
     ├── index.js                  # App entry point and route definitions
     ├── controllers/
     │   ├── authControllers.js    # register, login, logout, get/update/delete account
-    │   └── mealControllers.js    # list, create, get, delete meals
+    │   ├── mealControllers.js    # list, create, get, delete meals
+    │   └── nutritionControllers.js # daily report and streaks, with query validation
     ├── models/
     │   ├── userModel.js          # SQL queries for users
-    │   └── mealModel.js          # SQL queries for meals
+    │   ├── mealModel.js          # SQL queries for meals
+    │   └── nutritionModel.js     # Daily totals, rolling average, and streak SQL
     ├── middleware/
     │   ├── checkAuthentication.js
     │   └── logRoutes.js
-    └── db/
-        ├── pool.js
-        └── seed.js
+    ├── db/
+    │   ├── pool.js
+    │   ├── schema.js             # Table definitions shared by seed and tests
+    │   └── seed.js               # 60 days of generated meal history
+    └── tests/
+        └── nutritionModel.test.js
 ```
 
 ---
@@ -213,7 +252,7 @@ nourish/
 ## Roadmap
 
 - Edit existing meal entries
-- Add date filtering for meal history
-- Add daily calorie and macro totals
+- Let users change their timezone on the Account page
 - Add goal tracking for calories, protein, carbs, and fat
+- Add a weekly meal-plan calendar with planned-vs-actual comparison
 - Add nutrition search or food API integration

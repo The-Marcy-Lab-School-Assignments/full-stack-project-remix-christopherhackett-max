@@ -7,6 +7,7 @@ const logRoutes = require('./middleware/logRoutes');
 const checkAuthentication = require('./middleware/checkAuthentication');
 const authControllers = require('./controllers/authControllers');
 const mealControllers = require('./controllers/mealControllers');
+const nutritionControllers = require('./controllers/nutritionControllers');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -43,6 +44,13 @@ app.get('/api/meals', checkAuthentication, mealControllers.listMeals);
 app.post('/api/meals', checkAuthentication, mealControllers.createMeal);
 app.get('/api/meals/:meal_id', checkAuthentication, mealControllers.getMeal);
 app.delete('/api/meals/:meal_id', checkAuthentication, mealControllers.deleteMeal);
+
+// ====================================
+// Nutrition report routes (all require authentication)
+// ====================================
+
+app.get('/api/nutrition/daily', checkAuthentication, nutritionControllers.getDailyTotals);
+app.get('/api/nutrition/streaks', checkAuthentication, nutritionControllers.getStreaks);
 
 // ====================================
 // Global Error Handler
